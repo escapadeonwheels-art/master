@@ -6,8 +6,23 @@ import ParallaxScrollView from '@/components/parallax-scroll-view';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Link } from 'expo-router';
+import { fetch } from 'expo/fetch';
+
 
 export default function HomeScreen() {
+
+  async function fetchArticles() {
+  const response = await fetch("https://accuracy-mortician-uncured.ngrok-free.dev/api/articles", {
+  headers: {
+    'ngrok-skip-browser-warning': 'true', // This bypasses the warning page
+    'Content-Type': 'application/json'
+  }
+});
+  const data = await response.json();
+  console.log(data.data);
+  }
+  fetchArticles();
+
   return (
     <ParallaxScrollView
       headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
@@ -72,6 +87,15 @@ export default function HomeScreen() {
           <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
           <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
           <ThemedText type="defaultSemiBold">app-example</ThemedText>.
+        </ThemedText>
+      </ThemedView>
+      <ThemedView style={styles.stepContainer}>
+        <ThemedText type="subtitle">Text from Strapi</ThemedText>
+        <ThemedText>
+          {`Text from Strapi will appear here..`}
+          
+            
+          
         </ThemedText>
       </ThemedView>
     </ParallaxScrollView>

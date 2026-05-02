@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "eow-dev",
-    "slug": "eow-dev",
+    "name": "eod",
+    "slug": "eod",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "eowdev",
+    "scheme": "eod",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
