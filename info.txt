@@ -1,3 +1,9 @@
+Install Expo: 
+npx create-expo-app@latest my-app --template blank
+npx expo install react-dom react-native-web
+
+Install Strapi
+
 Start strapi: cd ~/eow-dev/eow-backend/server && npm run develop
 Start expo: cd ~/eow-dev/eow-frontend/eow && npm start
 Start ngrok: ~/ngrok http 1337
@@ -5,3 +11,11 @@ Start ngrok: ~/ngrok http 1337
 Access WebApp: https://8081-cs-160449811976-default.cs-asia-southeast1-fork.cloudshell.dev/?authuser=0
 Access Strapi Admin: https://accuracy-mortician-uncured.ngrok-free.dev/admin
 ------------
+Build local docker image: docker build -t my-eow-app .
+Run local docker image: docker run -it  my-eow-app (Open cloudshel preview on default 8080 port)
+------------
+Build Cloud Image on Artifact Registry:
+gcloud builds submit --tag gcr.io/eow-portal/expo-app
+
+------------
+
