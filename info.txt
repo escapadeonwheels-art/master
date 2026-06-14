@@ -14,6 +14,8 @@ Access Strapi Admin: https://accuracy-mortician-uncured.ngrok-free.dev/admin
 Build local docker image: docker build -t my-eow-app .
 Run local docker image: docker run -it  my-eow-app (Open cloudshel preview on default 8080 port)
 ------------
+Git Repo: https://github.com/escapadeonwheels-art/
+------------
 Build Cloud Image on Artifact Registry:
 gcloud builds submit --tag gcr.io/eow-portal/expo-app
 
