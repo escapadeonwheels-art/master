@@ -7,7 +7,7 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Plugin =>
       providerOptions: {
         bucketName: env('GCP_BUCKET_NAME'), // Your Google Cloud Bucket Name
         publicFiles: env.bool('GCP_PUBLIC_FILES', true), // Makes files publicly accessible
-        uniform: false,
+        uniform: true,
         basePath: '',
       },
     },
