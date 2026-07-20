@@ -29,3 +29,20 @@
 **/.DS_Store
 **/Thumbs.db
 
+#Strapi
+# Node dependencies
+**/node_modules/
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+
+# Strapi core runtime and build artifacts
+**/.strapi/
+**/.tmp/
+**/build/
+**/dist/
+
+# Local databases (SQLite)
+**/.tmp/data.db
+**/*.db
+
