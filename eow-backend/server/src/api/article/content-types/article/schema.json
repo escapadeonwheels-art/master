@@ -31,6 +31,33 @@
     },
     "slug": {
       "type": "uid"
+    },
+    "type": {
+      "type": "string"
+    },
+    "subtype": {
+      "type": "string"
+    },
+    "location": {
+      "type": "string"
+    },
+    "price": {
+      "type": "string"
+    },
+    "rating": {
+      "type": "string"
+    },
+    "reviews": {
+      "type": "text"
+    },
+    "host": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "featured": {
+      "type": "string"
     }
   }
 }
