@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Platform } from 'react-native';
-import { House, MagnifyingGlass, Heart, User } from 'phosphor-react-native';
+import { House, MagnifyingGlass, Heart, User, Envelope } from 'phosphor-react-native';
 import SplashScreen from '../screens/Auth/SplashScreen';
 import OnboardingScreen from '../screens/Onboarding/OnboardingScreen';
 import LoginScreen from '../screens/Auth/LoginScreen';
@@ -15,6 +15,7 @@ import DeliveryDetailsScreen from '../screens/Details/DeliveryDetailsScreen';
 import BookingDetailsScreen from '../screens/Details/BookingDetailsScreen';
 import BookingsScreen from '../screens/Bookings/BookingsScreen';
 import ProfileScreen from '../screens/Profile/ProfileScreen';
+import ContactUsScreen from '../screens/Bookings/ContactUsScreen';
 import MapScreen from '../screens/MapScreen/MapScreen';
 import CustomTabBar from '../components/navigation/CustomTabBar';
 
@@ -28,6 +29,19 @@ function ExploreStack() {
       <Stack.Screen name="Details" component={DetailsScreen} options={{ title: '' }} />
       <Stack.Screen name="DeliveryDetails" component={DeliveryDetailsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="BookingDetails" component={BookingDetailsScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="ContactUs" component={ContactUsScreen} options={{ headerShown: false }} />
+    </Stack.Navigator>
+  );
+}
+
+function ContactUsStack() {
+  return (
+    <Stack.Navigator>
+      <Stack.Screen 
+        name="ContactUsMain" 
+        component={ContactUsScreen} 
+        options={{ headerShown: false }} 
+      />
     </Stack.Navigator>
   );
 }
@@ -46,6 +60,7 @@ function HomeStack() {
 function MainTabs() {
   return (
     <Tab.Navigator
+      initialRouteName="Explore"
       screenOptions={{
         tabBarActiveTintColor: '#FF385C',
         tabBarInactiveTintColor: '#717171',
@@ -53,42 +68,49 @@ function MainTabs() {
       }}
       tabBar={(props) => <CustomTabBar {...props} />}
     >
-      <Tab.Screen
+      {/* <Tab.Screen
         name="Home"
         component={HomeStack}
         options={{
           tabBarIcon: ({ color, size }) => <House size={size} color={color} />,
         }}
-      />
+      /> */}
       <Tab.Screen
         name="Explore"
         component={ExploreStack}
         options={{
-          tabBarIcon: ({ color, size }) => <MagnifyingGlass size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <MagnifyingGlassIcon size={size} color={color} />,
         }}
       />
       <Tab.Screen
+        name="Contact Us"
+        component={ContactUsStack}
+        options={{
+          tabBarIcon: ({ color, size }) => <Envelope size={size} color={color} />,
+        }}
+      />
+      {/* <Tab.Screen
         name="Map"
         component={MapScreen}
         options={{
           tabBarIcon: ({ color, size }) => null,
           tabBarLabel: 'Map',
         }}
-      />
-      <Tab.Screen
+      /> */}
+      {/* <Tab.Screen
         name="Bookings"
         component={BookingsScreen}
         options={{
           tabBarIcon: ({ color, size }) => <Heart size={size} color={color} />,
         }}
-      />
-      <Tab.Screen
+      /> */}
+      {/* <Tab.Screen
         name="Profile"
         component={ProfileScreen}
         options={{
           tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
         }}
-      />
+      /> */}
     </Tab.Navigator>
   );
 }

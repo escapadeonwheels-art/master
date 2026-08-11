@@ -26,6 +26,26 @@ export default function HomeScreen() {
   const [serviceType, setServiceType] = useState<'delivery' | 'travel'>('travel');
   const [searchQuery, setSearchQuery] = useState('');
   
+  // 2. Initialize with an empty array to prevent stale cache evaluation
+  const [servicesData, setServicesData] = useState<any[]>([]);
+
+  // 3. Force sync data directly out of the populated global cache when the screen gains layout focus
+  useEffect(() => {
+    setServicesData([...mockServices]);
+    console.log("Synchronized Home Feed with populated Strapi cache:", mockServices.length);
+  }, []);
+  
+  // Compute filters down from preloaded data context
+  const filteredServices = servicesData
+    .filter(s => s.type === serviceType)
+    .filter(s => 
+      searchQuery === '' || 
+      s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.location.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+    
+  const featuredServices = filteredServices.filter(s => s.featured);
+
   // Booking Modal State
   const [bookingModalVisible, setBookingModalVisible] = useState(false);
   const [bookingStatus, setBookingStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -38,6 +58,7 @@ export default function HomeScreen() {
     totalPrice: '',
   });
 
+  /*
   const filteredServices = mockServices.filter(s => s.type === serviceType)
     .filter(s => 
       searchQuery === '' || 
@@ -45,7 +66,7 @@ export default function HomeScreen() {
       s.location.toLowerCase().includes(searchQuery.toLowerCase())
     );
   const featuredServices = filteredServices.filter(s => s.featured);
-
+  */
   // Booking Handlers
   const handleBookNow = () => {
     setBookingStatus('loading');
@@ -70,7 +91,7 @@ export default function HomeScreen() {
       }
     }, 2000);
   };
-
+  
   const handleCloseBookingModal = () => {
     setBookingModalVisible(false);
     setBookingStatus('idle');
@@ -208,37 +229,6 @@ export default function HomeScreen() {
             </View>
           </FadeInView>
         )}
-        
-        {/* 7️⃣ Popular Near You (Secondary Content) - Hidden during search 
-        {searchQuery === '' && (
-          <FadeInView delay={850} duration={600}>
-            <View style={styles.section}>
-              <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Popular near you</Text>
-                <Text style={styles.seeAllLink}>See all</Text>
-              </View>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.horizontalScroll}
-                scrollEventThrottle={16}
-              >
-                {filteredServices.slice(0, 10).map((service, index) => (
-                  <FadeInView key={service.id} delay={900 + index * 80} duration={500}>
-                    <FeaturedCard
-                      service={service}
-                      onPress={() => handleServiceCardPress(service)}
-                      onBookNow={() => handleServiceCardPress(service)}
-                      showBookButton={true}
-                      ctaLabel={serviceType === 'travel' ? 'Book Now' : ''}
-                    />
-                  </FadeInView>
-                ))}
-              </ScrollView>
-            </View>
-          </FadeInView>
-        )}
-        */}
         
         {/* Bottom Padding */}
         <View style={styles.bottomPadding} />

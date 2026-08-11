@@ -1,12 +1,14 @@
 
-const STRAPI_URL = 'https://cms-strapi-1005820341677.us-central1.run.app';
+export const STRAPI_URL = 'https://cms-strapi-1005820341677.us-central1.run.app';
 
-export const mockServices: Service[] = [];
+export let mockServices: Service[] = [];
 
-const fetchArticles = async () => {
+export const fetchArticles = async (): Promise<Service[]> => {
   try {
+    mockServices = [];
     let page = 1;
     let hasMorePages = true;
+    const loadedServices: Service[] = [];
 
     while (hasMorePages) {
       const response = await fetch(
@@ -28,8 +30,8 @@ const fetchArticles = async () => {
           title: data.data[i].title,
           location: data.data[i].location,
           price: data.data[i].price,
-          rating: data.data[i].rating,
-          reviews: data.data[i].reviews,
+          rating: Number(data.data[i].rating) || 0,
+          reviews: Number(data.data[i].reviews) || 0,
           image: data.data[i].image?.[0]?.url || 'https://placeholder.com', 
           host: 'x',
           description: data.data[i].description,
@@ -37,7 +39,7 @@ const fetchArticles = async () => {
           content: data.data[i].content || [], // ✅ Maps your rich text node structure safely
         });
       }
-
+      
       // Check pagination limits
       if (page < data.meta.pagination.pageCount) {
         page++;
@@ -45,7 +47,12 @@ const fetchArticles = async () => {
         hasMorePages = false;
       }
     }
+    console.log(mockServices)
     console.log("Completed total data load from Strapi. Count: " + mockServices.length);
+    
+    // Update both structural states seamlessly
+    //loadedServices = mockServices; 
+    return mockServices;
   } catch (error) {
     console.error("Strapi Load Error: ", error);
   }
@@ -106,86 +113,7 @@ export interface Service {
   featured?: boolean;
 }
 
-fetchArticles();
 
-/*
-export const mockServices: Service[] = [
-  {
-    id: '1',
-    type: 'delivery',
-    title: 'Fresh Groceries Delivery',
-    location: 'Downtown, 2.5 km',
-    price: 15,
-    rating: 4.8,
-    reviews: 234,
-    image: 'https://images.unsplash.com/photo-1542838132-92c53300491e',
-    host: 'QuickMart',
-    description: 'Fast grocery delivery within 30 minutes',
-    featured: true,
-  },
-  {
-    id: '2',
-    type: 'travel',
-    title: 'Beachfront Villa',
-    location: 'Bali, Indonesia',
-    price: 120,
-    rating: 4.9,
-    reviews: 456,
-    image: 'https://images.unsplash.com/photo-1499793983690-e29da59ef1c2',
-    host: 'Sarah',
-    description: 'Stunning ocean views with private pool',
-    featured: true,
-  },
-  {
-    id: '3',
-    type: 'delivery',
-    title: 'Restaurant Food Delivery',
-    location: 'Midtown, 1.2 km',
-    price: 25,
-    rating: 4.7,
-    reviews: 189,
-    image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836',
-    host: 'Tasty Bites',
-    description: 'Hot meals delivered to your door',
-  },
-  {
-    id: '4',
-    type: 'travel',
-    title: 'Mountain Cabin Retreat',
-    location: 'Aspen, Colorado',
-    price: 200,
-    rating: 5.0,
-    reviews: 89,
-    image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4',
-    host: 'Michael',
-    description: 'Cozy cabin with mountain views',
-  },
-  {
-    id: '5',
-    type: 'delivery',
-    title: 'Pharmacy Essentials',
-    location: 'Uptown, 3.1 km',
-    price: 10,
-    rating: 4.6,
-    reviews: 312,
-    image: 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de',
-    host: 'HealthPlus',
-    description: 'Medicine and health products delivery',
-  },
-  {
-    id: '6',
-    type: 'travel',
-    title: 'City Loft Apartment',
-    location: 'New York, USA',
-    price: 180,
-    rating: 4.8,
-    reviews: 567,
-    image: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267',
-    host: 'Emma',
-    description: 'Modern loft in the heart of Manhattan',
-  },
-];
-*/
 
 export const categories = [
   { id: '1', name: 'All', icon: 'grid-outline' },

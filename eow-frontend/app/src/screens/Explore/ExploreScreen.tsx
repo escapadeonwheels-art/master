@@ -5,92 +5,91 @@ import { FlashList } from '@shopify/flash-list';
 import { useNavigation } from '@react-navigation/native';
 import SearchBar from '../../components/ui/SearchBar';
 import FilterChip from '../../components/ui/FilterChip';
-import ViewToggle from '../../components/buttons/ViewToggle';
 import ServiceCard from '../../components/cards/ServiceCard';
-import MapScreen from '../MapScreen/MapScreen';
 import { mockServices, categories } from '../../mock/data';
 import { colors } from '../../constants/colors';
 import { spacing } from '../../constants/spacing';
+import FadeInView from '../../components/animations/FadeInView';
+import { typography } from '../../constants/typography';
+import AppHeader from '../../components/headers/AppHeader';
+
+const userName = 'Guest';
 
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
-  const [view, setView] = useState<'list' | 'map'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('1');
 
   const filteredServices = mockServices.filter(service => {
     const matchesSearch = searchQuery === '' || 
-      service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      service.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
       service.location.toLowerCase().includes(searchQuery.toLowerCase());
-    
+      
     const matchesCategory = selectedCategory === '1' || 
-      (selectedCategory === '2' && service.type === 'travel' && service.subtype.toLowerCase().includes('beaches')) ||
-      (selectedCategory === '3' && service.type === 'travel' && service.subtype.toLowerCase().includes('mountains')) ||
-      (selectedCategory === '4' && service.type === 'travel' && service.subtype.toLowerCase().includes('cruises')) ||
-      (selectedCategory === '5' && service.type === 'travel' && service.subtype.toLowerCase().includes('trekking')) ||
+      (selectedCategory === '2' && service.type === 'travel' && service.subtype.toLowerCase().includes('beaches')) || 
+      (selectedCategory === '3' && service.type === 'travel' && service.subtype.toLowerCase().includes('mountains')) || 
+      (selectedCategory === '4' && service.type === 'travel' && service.subtype.toLowerCase().includes('cruises')) || 
+      (selectedCategory === '5' && service.type === 'travel' && service.subtype.toLowerCase().includes('trekking')) || 
       (selectedCategory === '6' && service.type === 'travel' && service.subtype.toLowerCase().includes('wildlife'));
-    
+      
     return matchesSearch && matchesCategory;
   });
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <AppHeader notificationCount={3} />
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <View>
-            <Text style={styles.title}>Explore</Text>
-            <Text style={styles.subtitle}>{filteredServices.length} places available</Text>
-          </View>
-          <ViewToggle view={view} onToggle={setView} />
+          <FadeInView delay={100} duration={700}>
+            <View style={styles.heroSection}>
+              <Text style={styles.heroHeading}>Hi, {userName}</Text>
+            </View>
+          </FadeInView>
         </View>
+        
         <SearchBar 
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          placeholder="Search destinations..."
-          onClear={() => setSearchQuery('')}
+          value={searchQuery} 
+          onChangeText={setSearchQuery} 
+          placeholder="Where do you want to go ?" 
+          onClear={() => setSearchQuery('')} 
         />
       </View>
 
+      {/* Restored the Category Filter Section Layout */}
       <View style={styles.filterSection}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterList}>
           {categories.map(category => (
-            <FilterChip
-              key={category.id}
-              label={category.name}
-              isSelected={selectedCategory === category.id}
-              onPress={() => setSelectedCategory(category.id)}
+            <FilterChip 
+              key={category.id} 
+              label={category.name} 
+              isSelected={selectedCategory === category.id} 
+              onPress={() => setSelectedCategory(category.id)} 
             />
           ))}
         </ScrollView>
       </View>
 
       <View style={styles.content}>
-        {view === 'list' ? (
-          filteredServices.length > 0 ? (
-            <FlashList
-              data={filteredServices}
-              renderItem={({ item }) => (
-                <ServiceCard
-                  service={item}
-                  onPress={() => navigation.navigate('Details' as never, { service: item } as never)}
-                />
-              )}
-              estimatedItemSize={280}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom }]}
-            />
-          ) : (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>🔍</Text>
-              <Text style={styles.emptyTitle}>No results found</Text>
-              <Text style={styles.emptyText}>Try adjusting your search or filters</Text>
-            </View>
-          )
-        ) : (
-          <MapScreen 
-            onSelectLocation={(service) => navigation.navigate('Details' as never, { service } as never)}
+        {filteredServices.length > 0 ? (
+          <FlashList 
+            data={filteredServices} 
+            renderItem={({ item }) => (
+              <ServiceCard 
+                service={item} 
+                onPress={() => navigation.navigate('Details' as never, { service: item } as never)} 
+              />
+            )} 
+            estimatedItemSize={280} 
+            showsVerticalScrollIndicator={false} 
+            contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom }]} 
           />
+        ) : (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyIcon}>🔍</Text>
+            <Text style={styles.emptyTitle}>No results found</Text>
+            <Text style={styles.emptyText}>Try adjusting your search or filters</Text>
+          </View>
         )}
       </View>
     </View>
@@ -123,6 +122,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.gray,
     marginTop: 2,
+  },
+  heroSection: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
+    backgroundColor: colors.background,
+  },
+  heroHeading: {
+    ...typography.h1,
+    color: colors.dark,
+    marginBottom: spacing.sm,
+    letterSpacing: -0.5,
+    lineHeight: 44,
+  },
+  heroSubtext: {
+    ...typography.body,
+    color: colors.gray,
+    lineHeight: 26,
+    marginBottom: 0,
   },
   filterSection: {
     paddingVertical: spacing.md,

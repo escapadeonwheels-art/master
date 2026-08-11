@@ -505,11 +505,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     width: '85%',
     maxWidth: 350,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 10,
+    boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
   },
   confirmationTitle: {
     ...typography.h2,

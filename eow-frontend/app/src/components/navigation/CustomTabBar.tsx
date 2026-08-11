@@ -1,11 +1,11 @@
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { House, MagnifyingGlass, Heart, User, MapPin } from 'phosphor-react-native';
+import { HouseIcon, MagnifyingGlassIcon, HeartIcon, UserIcon, EnvelopeIcon } from 'phosphor-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../../constants/colors';
 import { spacing, borderRadius } from '../../constants/spacing';
 import { typography } from '../../constants/typography';
-import { UserIcon, HeartIcon, MapPinIcon, MagnifyingGlassIcon, HouseIcon } from 'phosphor-react-native';
+
 
 const { width } = Dimensions.get('window');
 
@@ -29,6 +29,7 @@ export default function CustomTabBar({ state, descriptors, navigation }: CustomT
     Map: (color, size) => <MapPinIcon size={size} color={color} weight="bold" />,
     Bookings: (color, size) => <HeartIcon size={size} color={color} weight="bold" />,
     Profile: (color, size) => <UserIcon size={size} color={color} weight="bold" />,
+    'Contact Us': (color, size) => <EnvelopeIcon size={size} color={color} weight="bold" />,
   };
 
   return (
@@ -95,11 +96,6 @@ export default function CustomTabBar({ state, descriptors, navigation }: CustomT
                   24
                 )
               ) : null}
-              {isFocused && (
-                <Text style={[ styles.tabLabel,{ color: isFocused ? colors.primary : colors.gray },]}>
-                  {label}
-                </Text>
-              )}
             </TouchableOpacity>
           );
         })}

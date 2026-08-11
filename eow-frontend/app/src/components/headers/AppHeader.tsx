@@ -18,7 +18,7 @@ export default function AppHeader({ notificationCount = 3, onNotificationPress }
           <Text style={styles.appName}>Escapade on Wheels</Text>
         </View>
 
-        <TouchableOpacity style={styles.notificationButton} onPress={onNotificationPress} activeOpacity={0.7}>
+        {/* <TouchableOpacity style={styles.notificationButton} onPress={onNotificationPress} activeOpacity={0.7}>
             <View style={styles.iconWrapper}>
               <BellIcon size={24} color={colors.dark} weight="bold" />
               {notificationCount > 0 && (
@@ -28,7 +28,7 @@ export default function AppHeader({ notificationCount = 3, onNotificationPress }
               )}
             </View>
         </TouchableOpacity>
-      
+       */}
     </View>
     
   );

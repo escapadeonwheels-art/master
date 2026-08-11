@@ -14,4 +14,26 @@ const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Plugin =>
   },
 });
 
+module.exports = ({ env }) => ({
+  email: {
+    config: {
+      provider: 'nodemailer',
+      providerOptions: {
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true, // Use SSL/TLS for port 465
+        auth: {
+          user: env('GMAIL_USER'),
+          pass: env('GMAIL_APP_PASSWORD'), // 16-character App Password
+        },
+      },
+      settings: {
+        defaultFrom: env('GMAIL_USER'),
+        defaultReplyTo: env('GMAIL_USER'),
+      },
+    },
+  },
+});
+
+
 export default config;

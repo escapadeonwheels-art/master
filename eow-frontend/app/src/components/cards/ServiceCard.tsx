@@ -1,5 +1,5 @@
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
-import { Star, MapPin } from 'phosphor-react-native';
+import { StarIcon, MapPinIcon } from 'phosphor-react-native';
 import Card from '../ui/Card';
 import Badge from '../ui/Badge';
 import { colors } from '../../constants/colors';
@@ -16,21 +16,23 @@ export default function ServiceCard({ service, onPress }: ServiceCardProps) {
     <TouchableOpacity onPress={onPress} activeOpacity={0.95}>
       <Card style={styles.card}>
         <Image source={{ uri: service.image }} style={styles.image} />
-        <View style={styles.badgeContainer}>
+        {/* <View style={styles.badgeContainer}>
           <Badge text={service.type === 'delivery' ? '🚚 Delivery' : '✈️ Travel'} variant="primary" />
-        </View>
+        </View> */}
         <View style={styles.content}>
           <Text style={styles.title} numberOfLines={1}>{service.title}</Text>
           <View style={styles.locationRow}>
-            <MapPin size={14} color={colors.gray} weight="bold" />
+            <MapPinIcon size={14} color={colors.gray} weight="bold" />
             <Text style={styles.location} numberOfLines={1}>{service.location}</Text>
           </View>
           <View style={styles.footer}>
+            {service.reviews > 0 && (
             <View style={styles.rating}>
-              <Star size={16} weight="fill" color={colors.primary} />
+              <StarIcon size={16} weight="fill" color={colors.primary} />
               <Text style={styles.ratingText}>{service.rating}</Text>
               <Text style={styles.reviews}>({service.reviews})</Text>
             </View>
+            )}
             <View>
               <Text style={styles.price}>{service.price}</Text>
               <Text style={styles.priceLabel}>{service.type === 'delivery' ? 'delivery' : ''}</Text>
