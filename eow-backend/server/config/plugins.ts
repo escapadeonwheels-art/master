@@ -35,5 +35,16 @@ module.exports = ({ env }) => ({
   },
 });
 
+module.exports = ({ env }) => ({
+  // ... your other plugins ...
+  'users-permissions': {
+    config: {
+      register: {
+        allowedFields: ['firstName', 'lastName', 'avatarUrl'], // Allow Google profiles to pass metadata
+      },
+    },
+  },
+});
+
 
 export default config;

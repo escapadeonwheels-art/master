@@ -1,35 +1,101 @@
-import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Envelope, Lock, Eye, EyeSlash, ArrowRight } from 'phosphor-react-native';
+import * as WebBrowser from 'expo-web-browser';
+import * as AuthSession from 'expo-auth-session';
 import { colors } from '../../constants/colors';
 import { spacing, borderRadius } from '../../constants/spacing';
 import { typography } from '../../constants/typography';
-import Button from '../../components/ui/Button';
+import { GoogleLogoIcon } from 'phosphor-react-native';
+import { STRAPI_URL } from '../../mock/data';
+
+// Ensures pop-up windows handle OAuth redirects accurately on web environments
+WebBrowser.maybeCompleteAuthSession();
 
 interface LoginScreenProps {
   onLogin: () => void;
-  onNavigateToRegister: () => void;
-  onNavigateToForgotPassword: () => void;
 }
 
-export default function LoginScreen({ onLogin, onNavigateToRegister, onNavigateToForgotPassword }: LoginScreenProps) {
+export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const insets = useSafeAreaInsets();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [errors, setErrors] = useState({ email: '', password: '' });
+  const [googleLoading, setGoogleLoading] = useState(false);
 
-  const handleLogin = () => {
-    let newErrors = { email: '', password: '' };
-    
-    if (!email) newErrors.email = 'Email is required';
-    if (!password) newErrors.password = 'Password is required';
-    
-    setErrors(newErrors);
-    
-    if (!newErrors.email && !newErrors.password) {
-      onLogin();
+  const discovery = {
+    authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
+    tokenEndpoint: 'https://oauth2.googleapis.com/token',
+  };
+
+  const [request, response, promptAsync] = AuthSession.useAuthRequest(
+    {
+      clientId: '1005820341677-13j9pp847b3r5dohafollde1fm0q7e4g.apps.googleusercontent.com',
+      scopes: ['openid', 'profile', 'email'],
+      redirectUri: AuthSession.makeRedirectUri({ isRedirect: true }), 
+      responseType: 'token', 
+      usePKCE: false,        
+      extraParams: {
+        prompt: 'select_account', 
+        access_type: 'online',
+      }
+    },
+    discovery
+  );
+  useEffect(() => {
+    if (response) {
+      if (response.type === 'success' && response.authentication?.accessToken) {
+        // Keep the main page spinner active during the backend query
+        setGoogleLoading(true);
+        exchangeTokenWithStrapi(response.authentication.accessToken);
+      } else {
+        setGoogleLoading(false);
+      }
+    }
+  }, [response]);
+
+  // ⭐ REMOVED the old useEffect listener on [response] because it causes asynchronous timing lag.
+  // Instead, everything is now handled sequentially inside the button press below.
+
+const handleGoogleLoginPress = async () => {
+  setGoogleLoading(true);
+  try {
+    // ⭐ THE DEFINITIVE FIX: Force the auth flow to happen in the exact same tab
+    // This completely prevents the white window from opening in the first place
+    const result = await promptAsync({ 
+      openAuthSessionInPopup: false 
+    });
+
+    if (result?.type === 'success' && result.authentication?.accessToken) {
+      await exchangeTokenWithStrapi(result.authentication.accessToken);
+    } else {
+      setGoogleLoading(false);
+    }
+  } catch (error) {
+    console.error('Authentication redirect failed:', error);
+    setGoogleLoading(false);
+  }
+};
+
+  const exchangeTokenWithStrapi = async (googleToken: string) => {
+    try {
+      const res = await fetch(
+        `${STRAPI_URL}/api/auth/google/callback?access_token=${googleToken}`
+      );
+      const data = await res.json();
+
+      if (data.jwt) {
+        localStorage.setItem('userToken', data.jwt);
+        localStorage.setItem('userData', JSON.stringify(data.user));
+        
+        // Let the spinner sit for an extra 100ms to allow browser threads to stabilize
+        setTimeout(() => {
+          onLogin(); // Transition to the profile page seamlessly
+        }, 100);
+      } else {
+        console.error('Strapi auth validation failed:', data);
+        setGoogleLoading(false);
+      }
+    } catch (err) {
+      console.error('Failed communicating with Strapi container:', err);
+      setGoogleLoading(false);
     }
   };
 
@@ -47,91 +113,26 @@ export default function LoginScreen({ onLogin, onNavigateToRegister, onNavigateT
           <View style={styles.header}>
             <Text style={styles.logo}>🏠</Text>
             <Text style={styles.title}>Welcome Back</Text>
-            <Text style={styles.subtitle}>Sign in to your Airbnb account</Text>
+            <Text style={styles.subtitle}>Sign in to save your travel favorites</Text>
           </View>
 
-          {/* Form */}
+          {/* Action Interface Container */}
           <View style={styles.form}>
-            {/* Email Input */}
-            <View style={styles.inputWrapper}>
-              <Text style={styles.label}>Email Address</Text>
-              <View style={[
-                styles.inputContainer,
-                errors.email && styles.inputContainerError
-              ]}>
-                <Envelope size={20} color={colors.gray} weight="bold" />
-                <TextInput
-                  style={styles.input}
-                  placeholder="your@email.com"
-                  placeholderTextColor={colors.lightGray}
-                  value={email}
-                  onChangeText={(text) => {
-                    setEmail(text);
-                    setErrors({ ...errors, email: '' });
-                  }}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  editable
-                />
+            {googleLoading ? (
+              <View style={styles.loaderContainer}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={styles.loadingText}>Verifying credentials with Strapi...</Text>
               </View>
-              {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
-            </View>
-
-            {/* Password Input */}
-            <View style={styles.inputWrapper}>
-              <Text style={styles.label}>Password</Text>
-              <View style={[
-                styles.inputContainer,
-                errors.password && styles.inputContainerError
-              ]}>
-                <Lock size={20} color={colors.gray} weight="bold" />
-                <TextInput
-                  style={styles.input}
-                  placeholder="••••••••"
-                  placeholderTextColor={colors.lightGray}
-                  value={password}
-                  onChangeText={(text) => {
-                    setPassword(text);
-                    setErrors({ ...errors, password: '' });
-                  }}
-                  secureTextEntry={!showPassword}
-                />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                  {showPassword ? (
-                    <Eye size={20} color={colors.gray} weight="bold" />
-                  ) : (
-                    <EyeSlash size={20} color={colors.gray} weight="bold" />
-                  )}
-                </TouchableOpacity>
-              </View>
-              {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
-            </View>
-
-            {/* Forgot Password Link */}
-            <TouchableOpacity 
-              style={styles.forgotPasswordLink}
-              onPress={onNavigateToForgotPassword}
-            >
-              <Text style={styles.forgotPasswordText}>Forgot your password?</Text>
-              <ArrowRight size={16} color={colors.primary} weight="bold" />
-            </TouchableOpacity>
-
-            {/* Sign In Button */}
-            <Button
-              title="Sign In"
-              onPress={handleLogin}
-              variant="primary"
-              size="large"
-              style={styles.signInButton}
-            />
-          </View>
-
-          {/* Sign Up Link */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={onNavigateToRegister}>
-              <Text style={styles.signUpLink}>Sign Up</Text>
-            </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.googleButton, !request && { opacity: 0.6 }]}
+                disabled={!request}
+                onPress={handleGoogleLoginPress}
+              >
+                <GoogleLogoIcon size={28} color={colors.primary} weight="bold" />
+                <Text style={styles.googleButtonText}>Continue with Google</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -173,67 +174,39 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   form: {
-    gap: spacing.lg,
-    marginBottom: spacing.xl,
+    paddingHorizontal: spacing.sm,
   },
-  inputWrapper: {
-    gap: spacing.sm,
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: colors.dark,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  label: {
+  googleButtonText: {
     ...typography.bodyMedium,
     color: colors.dark,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.backgroundGray,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.lightGray,
-  },
-  inputContainerError: {
-    borderColor: colors.error,
-    backgroundColor: 'rgba(193, 53, 21, 0.05)',
-  },
-  input: {
-    flex: 1,
-    ...typography.body,
-    color: colors.dark,
-  },
-  errorText: {
-    ...typography.caption,
-    color: colors.error,
-  },
-  forgotPasswordLink: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-  },
-  forgotPasswordText: {
-    ...typography.body,
-    color: colors.primary,
     fontWeight: '600',
   },
-  signInButton: {
-    marginTop: spacing.md,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+  loaderContainer: {
     alignItems: 'center',
-    paddingTop: spacing.lg,
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    gap: spacing.sm,
   },
-  footerText: {
-    ...typography.body,
+  loadingText: {
+    ...typography.bodyMedium,
     color: colors.gray,
-  },
-  signUpLink: {
-    ...typography.body,
-    color: colors.primary,
-    fontWeight: '700',
+    fontWeight: '500',
+    marginTop: spacing.xs,
   },
 });

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Platform } from 'react-native';
+// Fixed Phosphor imports to match usages below (User instead of UserIcon)
 import { House, MagnifyingGlass, Heart, User, Envelope } from 'phosphor-react-native';
 import SplashScreen from '../screens/Auth/SplashScreen';
 import OnboardingScreen from '../screens/Onboarding/OnboardingScreen';
@@ -27,9 +28,8 @@ function ExploreStack() {
     <Stack.Navigator>
       <Stack.Screen name="ExploreList" component={ExploreScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Details" component={DetailsScreen} options={{ title: '' }} />
-      <Stack.Screen name="DeliveryDetails" component={DeliveryDetailsScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="BookingDetails" component={BookingDetailsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="ContactUs" component={ContactUsScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="Profile" component={LoginScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }
@@ -57,7 +57,44 @@ function HomeStack() {
   );
 }
 
-function MainTabs() {
+// ⭐ FIX: Moved LoginTabStack up here so MainTabs can access it safely
+function LoginTabStack({ onAuthenticate }: { onAuthenticate: () => void }) {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="LoginMain">
+        {({ navigation }) => (
+          <LoginScreen
+            onLogin={onAuthenticate}
+            onNavigateToRegister={() => navigation.navigate('Register' as never)}
+            onNavigateToForgotPassword={() => navigation.navigate('ForgotPassword' as never)}
+          />
+        )}
+      </Stack.Screen>
+      <Stack.Screen name="Register">
+        {({ navigation }) => (
+          <RegisterScreen
+            onRegister={onAuthenticate}
+            onNavigateToLogin={() => navigation.navigate('LoginMain' as never)}
+          />
+        )}
+      </Stack.Screen>
+      <Stack.Screen name="ForgotPassword">
+        {({ navigation }) => (
+          <ForgotPasswordScreen
+            onBack={() => navigation.goBack()}
+            onSubmit={() => navigation.navigate('LoginMain' as never)}
+          />
+        )}
+      </Stack.Screen>
+    </Stack.Navigator>
+  );
+}
+
+function MainTabs({ onAuthenticate }: { onAuthenticate: () => void }) {
+  // Check if a user token exists in localStorage (Web environment)
+  const token = typeof window !== 'undefined' ? localStorage.getItem('userToken') : null;
+  const hasSession = !!token;
+
   return (
     <Tab.Navigator
       initialRouteName="Explore"
@@ -68,20 +105,14 @@ function MainTabs() {
       }}
       tabBar={(props) => <CustomTabBar {...props} />}
     >
-      {/* <Tab.Screen
-        name="Home"
-        component={HomeStack}
-        options={{
-          tabBarIcon: ({ color, size }) => <House size={size} color={color} />,
-        }}
-      /> */}
       <Tab.Screen
         name="Explore"
         component={ExploreStack}
         options={{
-          tabBarIcon: ({ color, size }) => <MagnifyingGlassIcon size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <MagnifyingGlass size={size} color={color} />,
         }}
       />
+      
       <Tab.Screen
         name="Contact Us"
         component={ContactUsStack}
@@ -89,28 +120,29 @@ function MainTabs() {
           tabBarIcon: ({ color, size }) => <Envelope size={size} color={color} />,
         }}
       />
-      {/* <Tab.Screen
-        name="Map"
-        component={MapScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => null,
-          tabBarLabel: 'Map',
-        }}
-      /> */}
-      {/* <Tab.Screen
-        name="Bookings"
-        component={BookingsScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => <Heart size={size} color={color} />,
-        }}
-      /> */}
-      {/* <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
-        options={{
-          tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
-        }}
-      /> */}
+
+      {/* DYNAMIC PROFILE TAB */}
+      {hasSession ? (
+        // 1. If logged in: Show the actual Profile Screen
+        <Tab.Screen
+          name="Profile"
+          component={ProfileScreen}
+          options={{
+            tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
+          }}
+        />
+      ) : (
+        // 2. If logged out: Point the Profile Tab to render your Google Login Stack
+        <Tab.Screen
+          name="Profile"
+          options={{
+            tabBarLabel: 'Login',
+            tabBarIcon: ({ color, size }) => <User size={size} color={color} />,
+          }}
+        >
+          {() => <LoginTabStack onAuthenticate={onAuthenticate} />}
+        </Tab.Screen>
+      )}
     </Tab.Navigator>
   );
 }
@@ -150,6 +182,9 @@ function AuthStack({ onAuthenticate }: { onAuthenticate: () => void }) {
 export default function RootNavigator() {
   const [isLoading, setIsLoading] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  
+  // Create an authentication state piece so we can force a layout re-render on login actions
+  const [authSessionCounter, setAuthSessionCounter] = useState(0);
   const [isAuthenticated, setIsAuthenticated] = useState(true);
 
   useEffect(() => {
@@ -168,5 +203,6 @@ export default function RootNavigator() {
     return <AuthStack onAuthenticate={() => setIsAuthenticated(true)} />;
   }
 
-  return <MainTabs />;
+  // ⭐ Passed state update callback handler down to MainTabs
+  return <MainTabs onAuthenticate={() => setAuthSessionCounter(prev => prev + 1)} />;
 }

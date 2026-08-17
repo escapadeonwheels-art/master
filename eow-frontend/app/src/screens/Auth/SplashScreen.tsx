@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../constants/colors';
@@ -13,49 +13,56 @@ interface SplashScreenProps {
 export default function SplashScreen({ isDataReady, onAnimationComplete }: SplashScreenProps) {
   const insets = useSafeAreaInsets();
   
-  // Persistent refs to stop strict-mode remount resets
-  const animationStarted = useRef(false);
-  const screenFadeAnim = useRef(new Animated.Value(1)).current; // Controls overall screen fade out
+  // Track whether the logo entrance animation has fully finished
+  const [isEntranceAnimationDone, setIsEntranceAnimationDone] = useState(false);
+  const exitStarted = useRef(false);
 
+  const screenFadeAnim = useRef(new Animated.Value(1)).current; 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
+  // STAGE 1: Kick off entrance animation IMMEDIATELY on mount
   useEffect(() => {
-    // Only kick off the entrance animation once the data has finished loading in App.tsx
-    if (!isDataReady || animationStarted.current) return;
-    animationStarted.current = true;
-
-    // 1. Play the logo entrance animations smoothly (takes 800ms)
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 800,
-        useNativeDriver: false,
+        useNativeDriver: false, // Changed to false to prevent the missing native module warning
       }),
       Animated.timing(slideAnim, {
         toValue: 0,
         duration: 800,
-        useNativeDriver: false,
+        useNativeDriver: false, // Changed to false to prevent the missing native module warning
       }),
       Animated.timing(scaleAnim, {
         toValue: 1,
         duration: 800,
-        useNativeDriver: false,
+        useNativeDriver: false, // Changed to false to prevent the missing native module warning
       }),
     ]).start(() => {
-      // 2. FIXED: Increased delay to 1500ms so it rests beautifully on screen before disappearing
+      // Mark entrance as done. The screen will stay active here if data is still loading
+      setIsEntranceAnimationDone(true);
+    });
+  }, []);
+
+  // STAGE 2: Watch both conditions, exit only when both are true
+  useEffect(() => {
+    if (isDataReady && isEntranceAnimationDone && !exitStarted.current) {
+      exitStarted.current = true;
+
+      // Rest beautifully for 1000ms before fading out to the main screen
       setTimeout(() => {
         Animated.timing(screenFadeAnim, {
           toValue: 0,
-          duration: 400, // Smooth 400ms fade transition out
-          useNativeDriver: false,
+          duration: 400,
+          useNativeDriver: false, // Changed to false to prevent the missing native module warning
         }).start(() => {
           onAnimationComplete();
         });
-      }, 1500); 
-    });
-  }, [isDataReady]);
+      }, 1000);
+    }
+  }, [isDataReady, isEntranceAnimationDone]);
 
   return (
     <Animated.View style={[styles.container, { opacity: screenFadeAnim, paddingTop: insets.top, paddingBottom: insets.bottom }]}>

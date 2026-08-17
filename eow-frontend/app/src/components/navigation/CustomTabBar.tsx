@@ -26,7 +26,6 @@ export default function CustomTabBar({ state, descriptors, navigation }: CustomT
   const iconMap: { [key: string]: (color: string, size: number) => React.ReactNode } = {
     Home: (color, size) => <HouseIcon size={size} color={color} weight="bold" />,
     Explore: (color, size) => <MagnifyingGlassIcon size={size} color={color} weight="bold" />,
-    Map: (color, size) => <MapPinIcon size={size} color={color} weight="bold" />,
     Bookings: (color, size) => <HeartIcon size={size} color={color} weight="bold" />,
     Profile: (color, size) => <UserIcon size={size} color={color} weight="bold" />,
     'Contact Us': (color, size) => <EnvelopeIcon size={size} color={color} weight="bold" />,

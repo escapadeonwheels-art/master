@@ -1,4 +1,6 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useEffect, useState } from 'react';
+// ⭐ FIX 1: Explicitly added Image to your core react-native imports array list
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { User, CreditCard, Bell, Globe, Moon, SignOut, PencilSimple, House, Question } from 'phosphor-react-native';
 import QuickActionCard from '../../components/cards/QuickActionCard';
@@ -9,6 +11,14 @@ interface ProfileOptionProps {
   icon: React.ReactNode;
   title: string;
   onPress?: () => void;
+}
+
+interface UserData {
+  username?: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  avatarUrl?: string;
 }
 
 function ProfileOption({ icon, title, onPress }: ProfileOptionProps) {
@@ -22,27 +32,68 @@ function ProfileOption({ icon, title, onPress }: ProfileOptionProps) {
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
+  const [user, setUser] = useState<UserData | null>(null);
+
+  // Load the authentic user data saved from the Google authentication handshake
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedUser = localStorage.getItem('userData');
+      if (savedUser) {
+        try {
+          setUser(JSON.parse(savedUser));
+        } catch (e) {
+          console.error('Error parsing userData from localStorage:', e);
+        }
+      }
+    }
+  }, []);
+
+  // Remove the credentials and reload the web application to switch views instantly
+  const handleSignOut = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('userToken');
+      localStorage.removeItem('userData');
+      window.location.reload();
+    }
+  };
+
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: insets.bottom }}>
+        
+        {/* Dynamic Profile Header */}
         <View style={styles.header}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
-              <User size={48} color={colors.background} weight="bold" />
+              {user?.avatarUrl ? (
+                // ⭐ FIX 2: Added styles.profileImage to ensure the image scales perfectly within the border
+                <Image source={{ uri: user.avatarUrl }} style={styles.profileImage} />
+              ) : (
+                // Fallback icon if no picture is found
+                <User size={48} color={colors.background} weight="bold" />
+              )}
             </View>
             <TouchableOpacity style={styles.editButton}>
               <PencilSimple size={16} color={colors.background} weight="bold" />
             </TouchableOpacity>
           </View>
-          <Text style={styles.name}>Alex Johnson</Text>
-          <Text style={styles.email}>alex.johnson@example.com</Text>
-          <View style={styles.ratingContainer}>
-            <Text style={styles.rating}>⭐ 4.9</Text>
-            <Text style={styles.ratingLabel}>Host Rating</Text>
-          </View>
+
+          {/* ⭐ FIX 3: Cleaned up the layout by removing the duplicate username text block */}
+          <Text style={styles.name}>
+            {user?.firstName && user?.lastName 
+              ? `${user.firstName} ${user.lastName}` 
+              : user?.username || 'Traveler'}
+          </Text>
+          
+          <Text style={styles.email}>{user?.email || 'Sign in to access your profile'}</Text>
+          
+          {/* <View style={styles.ratingContainer}>
+            <Text style={styles.rating}>⭐ 5.0</Text>
+            <Text style={styles.ratingLabel}>Member Rating</Text>
+          </View> */}
         </View>
 
-        <View style={styles.section}>
+        {/* <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
           <QuickActionCard
             icon={<PencilSimple size={24} color={colors.primary} weight="bold" />}
@@ -83,10 +134,11 @@ export default function ProfileScreen() {
             icon={<Question size={24} color={colors.dark} />}
             title="Help Center"
           />
-        </View>
+        </View> */}
 
+        {/* Functional Logout Row */}
         <View style={styles.section}>
-          <TouchableOpacity style={styles.logoutButton}>
+          <TouchableOpacity style={styles.logoutButton} onPress={handleSignOut}>
             <SignOut size={20} color={colors.error} weight="bold" />
             <Text style={styles.logoutText}>Sign Out</Text>
           </TouchableOpacity>
@@ -119,6 +171,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden', // ⭐ FIX 4: Ensures the Google avatar clips into a clean circle
+  },
+  // ⭐ FIX 5: Added profileImage styling properties to ensure web display compliance
+  profileImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
   editButton: {
     position: 'absolute',

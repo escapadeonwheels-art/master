@@ -10,8 +10,14 @@ import FadeInView from '../../components/animations/FadeInView';
 import { STRAPI_URL } from '../../mock/data'; 
 
 // Modern Phosphor Icon Library Imports
-import { House, MagnifyingGlass, Heart, User, Envelope } from 'phosphor-react-native';
-import { Phone, PaperPlaneTilt, WhatsappLogo, Clock } from 'phosphor-react-native'; 
+import { 
+          PhoneIcon, 
+          PaperPlaneTiltIcon, 
+          WhatsappLogoIcon, 
+          InstagramLogoIcon, 
+          FacebookLogoIcon, 
+          YoutubeLogoIcon 
+} from 'phosphor-react-native';
 
 export default function ContactScreen() {
   const insets = useSafeAreaInsets();
@@ -23,11 +29,18 @@ export default function ContactScreen() {
   const [phone, setPhone] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmittedSuccessfully, setIsSubmittedSuccessfully] = useState(false); 
 
   // Communications Handlers
-  const handlePhoneCall = () => Linking.openURL('tel:+1234567890');
-  const handleEmail = () => Linking.openURL('mailto:escapadeonwheels@gmail.com');
-  const handleWhatsApp = () => Linking.openURL('https://wa.me');
+  const handlePhoneCall = () => Linking.openURL('tel:+918240630431');
+  const handleEmail = () => Linking.openURL('mailto: support@escapadeonwheels.com');
+  const handleWhatsApp = () => Linking.openURL('https://api.whatsapp.com/send/?phone=919531856644&text&type=phone_number&app_absent=0');
+
+  // Social URLs Linking Handlers (Replace with your usernames)
+  const handleInstagram = () => Linking.openURL('https://www.instagram.com/escapadeonwheels/');
+  const handleFacebook = () => Linking.openURL('https://www.facebook.com/escapadeonwheels');
+  const handleYoutube = () => Linking.openURL('https://www.youtube.com/@escapadeonwheels1618');
+
 
   const isFormValid = firstName && lastName && email && message;
 
@@ -35,6 +48,7 @@ export default function ContactScreen() {
   const handleSubmit = async () => {
     if (!isFormValid) return;
     setIsSubmitting(true);
+    setIsSubmittedSuccessfully(false);
     
     // Combine names into a single string for your generic endpoint
     const fullName = `${firstName} ${lastName}`.trim();
@@ -63,6 +77,7 @@ export default function ContactScreen() {
 
       if (response.ok && data.success) {
         Alert.alert('Success', 'Your support request has been routed via Strapi successfully!');
+        setIsSubmittedSuccessfully(true);
         setFirstName('');
         setLastName('');
         setEmail('');
@@ -101,7 +116,7 @@ export default function ContactScreen() {
           <View style={styles.leftColumn}>
             <TouchableOpacity style={styles.channelCard} onPress={handleWhatsApp}>
               <View style={[styles.iconWrapper, { backgroundColor: '#E8F8F5' }]}>
-                <WhatsappLogo size={22} color="#09A380" weight="bold" />
+                <WhatsappLogoIcon size={22} color="#09A380" weight="bold" />
               </View>
               <View style={styles.textContainer}>
                 <Text style={styles.channelTitle}>WhatsApp</Text>
@@ -111,30 +126,57 @@ export default function ContactScreen() {
 
             <TouchableOpacity style={styles.channelCard} onPress={handlePhoneCall}>
               <View style={[styles.iconWrapper, { backgroundColor: '#E1F5FE' }]}>
-                <Phone size={22} color="#0288D1" weight="bold" />
+                <PhoneIcon size={22} color="#0288D1" weight="bold" />
               </View>
               <View style={styles.textContainer}>
                 <Text style={styles.channelTitle}>Call Us</Text>
-                <Text style={styles.channelSubtitle}>24/7 Support</Text>
+                <Text style={styles.channelSubtitle}>Tap to Talk</Text>
               </View>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.channelCard} onPress={handleEmail}>
               <View style={[styles.iconWrapper, { backgroundColor: '#E8F5E9' }]}>
-                <PaperPlaneTilt size={22} color="#388E3C" weight="bold" />
+                <PaperPlaneTiltIcon size={22} color="#388E3C" weight="bold" />
               </View>
               <View style={styles.textContainer}>
                 <Text style={styles.channelTitle}>Email</Text>
                 <Text style={styles.channelSubtitle}>Fast Response</Text>
               </View>
             </TouchableOpacity>
+
+            {/* 3. Social Media Block Inserted Below Main Cards */}
+            <View style={styles.socialBlock}>
+              <Text style={styles.socialSectionTitle}>Connect With Us</Text>
+              <View style={styles.socialRow}>
+                
+                <TouchableOpacity style={[styles.socialButton, { backgroundColor: '#FDF2F8' }]} onPress={handleInstagram}>
+                  <InstagramLogoIcon size={20} color="#DB2777" weight="bold" />
+                  <Text style={styles.socialButtonText}>Instagram</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={[styles.socialButton, { backgroundColor: '#EFF6FF' }]} onPress={handleFacebook}>
+                  <FacebookLogoIcon size={20} color="#2563EB" weight="bold" />
+                  <Text style={styles.socialButtonText}>Facebook</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={[styles.socialButton, { backgroundColor: '#FEF2F2' }]} onPress={handleYoutube}>
+                  <YoutubeLogoIcon size={20} color="#DC2626" weight="bold" />
+                  <Text style={styles.socialButtonText}>YouTube</Text>
+                </TouchableOpacity>
+
+              </View>
+            </View>
+          
+
           </View>
+
+
 
           {/* RIGHT COLUMN: Interactive Input Contact Form Panel */}
           <View style={styles.rightColumn}>
             <View style={styles.formContainer}>
-              <Text style={styles.formSectionTitle}>Send a Message</Text>
-
+              <Text style={styles.formSectionTitle}>Send us a message</Text>
+              <Text style={styles.inputLabel}></Text>
               {/* Two Column Input Row: Name */}
               <View style={styles.formRow}>
                 <View style={styles.halfInputGroup}>
@@ -212,12 +254,21 @@ export default function ContactScreen() {
                 onPress={handleSubmit}
                 disabled={isSubmitting || !isFormValid}
               >
-                {isSubmitting ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.submitButtonText}>Submit Message</Text>
-                )}
+                {isSubmitting ? 
+                  (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : 
+                  (
+                    <Text style={styles.submitButtonText}>Submit Message</Text>
+                  )
+                }
               </TouchableOpacity>
+              {/* Only displays when the api transaction is verified as successful */}
+              {isSubmittedSuccessfully && (
+                <Text style={styles.submitNoticeText}>
+                  Thanks ! We will get back as quick as we can.
+                </Text>
+              )}
             </View>
           </View>
 
@@ -374,5 +425,48 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: colors.background,
   },
+  submitNoticeText: {
+    fontSize: 12,
+    color: colors.gray,
+    textAlign: 'center',
+    marginTop: spacing.sm, // Adds balanced breathing room directly beneath the button edge
+    fontWeight: '500',
+    fontStyle: 'italic',
+  },
+  socialBlock: { 
+      backgroundColor: colors.background, 
+      padding: spacing.sm, 
+      borderRadius: 12, 
+      borderWidth: 1, 
+      borderColor: colors.lightGray, 
+      marginTop: spacing.xs 
+    },
+    socialSectionTitle: { 
+      fontSize: 13, 
+      fontWeight: '700', 
+      color: colors.dark, 
+      marginBottom: spacing.xs, 
+      textAlign: 'center' 
+    },
+    socialRow: { 
+      flexDirection: 'column', // Stacks buttons vertically so they never clip
+      gap: 6, 
+    },
+    socialButton: { 
+      flexDirection: 'row', // Places icon directly beside text label
+      height: 38, 
+      borderRadius: 8, 
+      alignItems: 'center', 
+      paddingHorizontal: spacing.sm, 
+      borderWidth: 1, 
+      borderColor: colors.lightGray,
+      width: '100%', // Grows dynamically to match the exact width of your contact cards
+    },
+    socialButtonText: {
+      marginLeft: 8, 
+      fontSize: 11, 
+      fontWeight: '600',
+      color: colors.dark, // Ensures text colors contrast perfectly against light pastels
+    }
 });
 
