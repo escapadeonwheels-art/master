@@ -1,30 +1,30 @@
 import type { Core } from '@strapi/strapi';
 
-const config = ({ env }: Core.Config.Shared.ConfigParams): Core.Config.Plugin => ({
-    upload: {
+export default ({ env }: { env: any }) => ({
+  // 1. Google Cloud Storage Bucket Setup
+  upload: {
     config: {
       provider: '@strapi-community/strapi-provider-upload-google-cloud-storage',
       providerOptions: {
-        bucketName: env('GCP_BUCKET_NAME'), // Your Google Cloud Bucket Name
-        publicFiles: env.bool('GCP_PUBLIC_FILES', true), // Makes files publicly accessible
+        bucketName: env('GCP_BUCKET_NAME'), 
+        publicFiles: env.bool('GCP_PUBLIC_FILES', true), 
         uniform: true,
         basePath: '',
       },
     },
   },
-});
 
-module.exports = ({ env }) => ({
+  // 2. Gmail Nodemailer SMTP Settings
   email: {
     config: {
       provider: 'nodemailer',
       providerOptions: {
         host: 'smtp.gmail.com',
         port: 465,
-        secure: true, // Use SSL/TLS for port 465
+        secure: true, 
         auth: {
           user: env('GMAIL_USER'),
-          pass: env('GMAIL_APP_PASSWORD'), // 16-character App Password
+          pass: env('GMAIL_APP_PASSWORD'), 
         },
       },
       settings: {
@@ -33,18 +33,13 @@ module.exports = ({ env }) => ({
       },
     },
   },
-});
 
-module.exports = ({ env }) => ({
-  // ... your other plugins ...
+  // 3. Whitelisted Metadata Security Layer
   'users-permissions': {
     config: {
       register: {
-        allowedFields: ['firstName', 'lastName', 'avatarUrl'], // Allow Google profiles to pass metadata
+        allowedFields: ['firstName', 'lastName', 'avatarUrl'], 
       },
     },
   },
 });
-
-
-export default config;

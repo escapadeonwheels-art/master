@@ -73,7 +73,7 @@ export default function ExploreScreen() {
   const renderItem = useCallback(({ item }: { item: Service }) => (
     <ServiceCard 
       service={item} 
-      onPress={() => navigation.navigate('Details' as never, { service: item } as never)} 
+      onPress={() => navigation.navigate('BookingDetails' as never, { service: item } as never)} 
     />
   ), [navigation]);
 

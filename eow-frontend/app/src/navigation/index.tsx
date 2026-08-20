@@ -30,6 +30,7 @@ function ExploreStack() {
       <Stack.Screen name="Details" component={DetailsScreen} options={{ title: '' }} />
       <Stack.Screen name="ContactUs" component={ContactUsScreen} options={{ headerShown: false }} />
       <Stack.Screen name="Profile" component={LoginScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="BookingDetails" component={BookingDetailsScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }
