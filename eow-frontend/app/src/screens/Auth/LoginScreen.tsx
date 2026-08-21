@@ -96,27 +96,51 @@ export default function LoginScreen({ onLogin, onNavigateToRegister, onNavigateT
         throw new Error(strapiAuthData.error?.message || 'Strapi validation rejected.');
       }
 
-      console.log('Strapi authenticated completely. Syncing profile custom schema columns...');
+      // Extract details into fallback strings
+      const googleFirstName = decodedProfile.given_name || '';
+      const googleLastName = decodedProfile.family_name || '';
+      const googleAvatarUrl = decodedProfile.picture || '';
 
-      // 3. Sync metadata back up to custom user collection paths via standard update route
-      const updateResponse = await fetch(`${STRAPI_URL}/api/users/${strapiAuthData.user.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${strapiAuthData.jwt}`,
-        },
-        body: JSON.stringify({
-          firstName: decodedProfile.given_name || '',
-          lastName: decodedProfile.family_name || '',
-          avatarUrl: decodedProfile.picture || '',
-        }),
-      });
+      // Check existing database records sent back from the callback loop
+      const strapiUser = strapiAuthData.user;
+      
+      // ✅ CONDITIONAL UPDATE CHECK: Verify if any detail actually changed
+      const hasMetadataChanged = 
+        strapiUser.firstName !== googleFirstName ||
+        strapiUser.lastName !== googleLastName ||
+        strapiUser.avatarUrl !== googleAvatarUrl;
 
-      const updatedUserData = await updateResponse.json();
-      console.log('Database transaction complete:', updatedUserData);
+      let finalUserData = strapiUser;
+
+      if (hasMetadataChanged) {
+        console.log('Detected changes in user metadata. Syncing with Strapi database...');
+        
+        // 3. Sync metadata back up to custom user collection paths via standard update route
+        const updateResponse = await fetch(`${STRAPI_URL}/api/users/${strapiUser.id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${strapiAuthData.jwt}`,
+          },
+          body: JSON.stringify({
+            firstName: googleFirstName,
+            lastName: googleLastName,
+            avatarUrl: googleAvatarUrl,
+          }),
+        });
+
+        if (updateResponse.ok) {
+          finalUserData = await updateResponse.json();
+          console.log('Database transaction complete: Profile updated.');
+        } else {
+          console.warn('Metadata update failed, proceeding with callback user data.');
+        }
+      } else {
+        console.log('Metadata matches existing records. Skipping remote network update transaction.');
+      }
 
       // 4. Backfill local app state objects and cache locally
-      const completeSession = { ...strapiAuthData.user, ...updatedUserData };
+      const completeSession = { ...strapiUser, ...finalUserData };
 
       if (Platform.OS === 'web') {
         window.localStorage.setItem('userToken', strapiAuthData.jwt);
