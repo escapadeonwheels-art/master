@@ -14,7 +14,7 @@ import { typography } from '../../constants/typography';
 import AppHeader from '../../components/headers/AppHeader';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { fetchArticles, Service, categories } from '../../mock/data';
+import { fetchArticles, Service } from '../../mock/data';
 
 interface CachedUser {
   firstName?: string;
@@ -91,33 +91,20 @@ export default function ExploreScreen() {
   }, [userData]);
 
   const filteredServices = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    
-    return services.filter(service => {
-      const matchesSearch = query === '' || 
-        service.title?.toLowerCase().includes(query) || 
-        service.location?.toLowerCase().includes(query);
-        
-      if (!matchesSearch) return false;
-      if (selectedCategory === '1') return true;
-
-      const sub = service.subtype?.toLowerCase() || '';
-      const isTravel = service.type === 'travel';
-
-      return isTravel && (
-        (selectedCategory === '2' && sub.includes('beaches')) ||
-        (selectedCategory === '3' && sub.includes('mountains')) ||
-        (selectedCategory === '4' && sub.includes('cruises')) ||
-        (selectedCategory === '5' && sub.includes('trekking')) ||
-        (selectedCategory === '6' && sub.includes('wildlife'))
-      );
-    });
-  }, [services, searchQuery, selectedCategory]);
+      const query = searchQuery.trim().toLowerCase();
+      
+      return services.filter(service => {
+        return query === '' || 
+          service.title?.toLowerCase().includes(query) || 
+          service.location?.toLowerCase().includes(query);
+      });
+  }, [services, searchQuery]);
 
   const renderItem = useCallback(({ item }: { item: Service }) => (
     <ServiceCard 
       service={item} 
-      onPress={() => navigation.navigate('BookingDetails' as never, { service: item } as never)} 
+      // ✅ FIX: Keep it wrapped inside a function execution block () =>
+      onPress={() => (navigation.navigate as any)('BookingDetails', { service: item })} 
     />
   ), [navigation]);
 
@@ -142,19 +129,6 @@ export default function ExploreScreen() {
           placeholder="Where do you want to go ?" 
           onClear={() => setSearchQuery('')} 
         />
-      </View>
-
-      <View style={styles.filterSection}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterList}>
-          {categories.map(category => (
-            <FilterChip 
-              key={category.id} 
-              label={category.name} 
-              isSelected={selectedCategory === category.id} 
-              onPress={() => setSelectedCategory(category.id)} 
-            />
-          ))}
-        </ScrollView>
       </View>
 
       <View style={styles.content}>

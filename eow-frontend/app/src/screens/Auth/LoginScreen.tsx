@@ -61,7 +61,7 @@ export default function LoginScreen({ onLogin, onNavigateToRegister, onNavigateT
     try {
       const result = await promptAsync({ 
         openAuthSessionInPopup: false 
-      });
+      } as any);
 
       if (result?.type === 'success' && result.authentication) {
         const { accessToken, idToken } = result.authentication;
@@ -79,6 +79,7 @@ export default function LoginScreen({ onLogin, onNavigateToRegister, onNavigateT
       setGoogleLoading(false);
     }
   };
+
 
   const processGoogleAuthentication = async (accessToken: string, idToken: string) => {
     try {
