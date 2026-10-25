@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Linking, Platform, Alert, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import * as SecureStore from 'expo-secure-store'; 
 import { colors } from '../../constants/colors';
 import { spacing } from '../../constants/spacing';
 import { typography } from '../../constants/typography';
@@ -19,8 +21,19 @@ import {
           YoutubeLogoIcon 
 } from 'phosphor-react-native';
 
+interface CachedUser {
+  firstName?: string;
+  lastName?: string;
+  avatarUrl?: string;
+  username?: string;
+  email?: string; // Ensured typing layout includes email field
+}
+
 export default function ContactScreen() {
   const insets = useSafeAreaInsets();
+
+  // Cache Tracking State Layer matching Explore Tab Pattern
+  const [userData, setUserData] = useState<CachedUser | null>(null);
   
   // Form State
   const [firstName, setFirstName] = useState('');
@@ -30,6 +43,38 @@ export default function ContactScreen() {
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmittedSuccessfully, setIsSubmittedSuccessfully] = useState(false); 
+
+  // Fires dynamically every time the user navigates onto the Contact Us Screen
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
+      const loadSessionProfile = async () => {
+        try {
+          let rawCache = null;
+          if (Platform.OS === 'web') {
+            rawCache = window.localStorage.getItem('userData');
+          } else {
+            rawCache = await SecureStore.getItemAsync('userData');
+          }
+          
+          if (isMounted && rawCache) {
+            const parsedUser: CachedUser = JSON.parse(rawCache);
+            setUserData(parsedUser);
+            
+            // Auto-populate fields dynamically on mount if present
+            if (parsedUser.firstName) setFirstName(parsedUser.firstName);
+            if (parsedUser.lastName) setLastName(parsedUser.lastName);
+            if (parsedUser.email) setEmail(parsedUser.email);
+          }
+        } catch (e) {
+          console.error('Failed parsing profile storage indicators within contact screen:', e);
+        }
+      };
+      loadSessionProfile();
+      return () => { isMounted = false; };
+    }, [])
+  );
+
 
   // Communications Handlers
   const handlePhoneCall = () => Linking.openURL('tel:+918240630431');

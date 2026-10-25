@@ -1,18 +1,31 @@
-import { View, Text, StyleSheet, ActivityIndicator, Platform } from 'react-native';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  ActivityIndicator, 
+  Platform, 
+  ScrollView, 
+  TouchableOpacity,
+  Dimensions
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import * as SecureStore from 'expo-secure-store'; 
+import * as SecureStore from 'expo-secure-store';
+import Slider from '@react-native-community/slider';
+
 import SearchBar from '../../components/ui/SearchBar';
 import ServiceCard from '../../components/cards/ServiceCard';
-import { colors } from '../../constants/colors';
-import { spacing } from '../../constants/spacing';
 import FadeInView from '../../components/animations/FadeInView';
-import { typography } from '../../constants/typography';
 import AppHeader from '../../components/headers/AppHeader';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { fetchArticles, Service, STRAPI_URL, PAGINATION_LIMIT } from '../../mock/data';
+import { colors } from '../../constants/colors';
+import { spacing } from '../../constants/spacing';
+import { typography } from '../../constants/typography';
+
+// Import the centralized fetch helper directly
+import { Service, fetchArticles } from '../../mock/data';
 
 interface CachedUser {
   firstName?: string;
@@ -20,6 +33,31 @@ interface CachedUser {
   avatarUrl?: string;
   username?: string;
 }
+
+const DESTINATION_TYPES = [
+  { id: 'beaches', label: 'Beaches' },
+  { id: 'cruises', label: 'Cruises' },
+  { id: 'mountains', label: 'Mountains' },
+  { id: 'trekking', label: 'Trekking' },
+  { id: 'wildlife', label: 'Wildlife' },
+  { id: 'discover_india', label: 'Discover India' },
+  { id: 'globe_trotting', label: 'Globe Trotting' },
+];
+
+const BUDGET_PRESETS = [
+  { label: 'Any Price', value: 2000000 },
+  { label: 'Under ₹25K', value: 25000 },
+  { label: 'Under ₹50K', value: 50000 },
+  { label: 'Under ₹1L', value: 100000 },
+  { label: 'Under ₹2.5L', value: 250000 },
+  { label: 'Under ₹5L', value: 500000 },
+];
+
+const REGION_TYPES = [
+  { id: 'all', label: 'All Regions' },
+  { id: 'international', label: 'International' },
+  { id: 'domestic', label: 'Domestic' },
+];
 
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
@@ -30,26 +68,33 @@ export default function ExploreScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [userData, setUserData] = useState<CachedUser | null>(null);
 
-  // INFINITE SCROLL STATE TRACKERS
   const [page, setPage] = useState(1);
   const [hasMorePages, setHasMorePages] = useState(true);
   const [isMoreLoading, setIsMoreLoading] = useState(false);
 
-  // A mutable reference to store the timer id for debouncing keystrokes
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+  const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [maxPrice, setMaxPrice] = useState<number>(2000000);
+  
+  const [maxDuration, setMaxDuration] = useState<number>(30);
+  const [sliderWidth, setSliderWidth] = useState<number>(Dimensions.get('window').width - spacing.md * 2);
 
-  // Fires every single time the user navigates onto the Explore Tab
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, []);
+
+
   useFocusEffect(
     useCallback(() => {
       let isMounted = true;
       const loadSessionProfile = async () => {
         try {
-          let rawCache = null;
-          if (Platform.OS === 'web') {
-            rawCache = window.localStorage.getItem('userData');
-          } else {
-            rawCache = await SecureStore.getItemAsync('userData');
-          }
+          let rawCache = Platform.OS === 'web'
+            ? window.localStorage.getItem('userData')
+            : await SecureStore.getItemAsync('userData');
           if (isMounted && rawCache) setUserData(JSON.parse(rawCache));
         } catch (e) {
           console.error('Failed parsing profile storage indicators within feed:', e);
@@ -60,119 +105,70 @@ export default function ExploreScreen() {
     }, [])
   );
 
-  // ⚡ CORE FUNCTION: Loads data based on both page state and query parameters
   const loadData = useCallback(async (targetPage: number, currentQuery: string, shouldAppend: boolean) => {
     if (targetPage === 1) setIsLoading(true);
     else setIsMoreLoading(true);
 
-    let url = `${STRAPI_URL}/api/articles?pagination[page]=${targetPage}&pagination[pageSize]=${PAGINATION_LIMIT}&populate[image][fields]=url`;
-    
-    // Add Strapi future-proofed field array logic dynamically
-    const requestedFields = ['documentId', 'type', 'subtype', 'title', 'location', 'price', 'rating', 'reviews', 'description', 'featured'];
-    const fieldsQuery = requestedFields.map((f, i) => `fields[${i}]=${f}`).join('&');
-    url += `&${fieldsQuery}`;
-
-    // ⚡ SERVER-SIDE SEARCH QUERY INJECTION: 
-    // Looks across titles or locations using case-insensitive partial match ($containsi)
-    if (currentQuery.trim() !== '') {
-      const cleanQuery = encodeURIComponent(currentQuery.trim());
-      url += `&filters[$or][0][title][$containsi]=${cleanQuery}&filters[$or][1][location][$containsi]=${cleanQuery}`;
-    }
-
     try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Network error');
-      
-      const json = await response.json();
-      const rawData = json?.data || [];
-
-      // Re-use your dynamic mapper loop
-      const mappedData: Service[] = rawData.map((item: any) => {
-        // ✅ FIX: Reliable object and array checks for Strapi v5 image structures
-        let imageUrl = 'https://picsum.photos'; 
-        
-        if (item.image) {
-          if (Array.isArray(item.image) && item.image[0]?.url) {
-            imageUrl = item.image[0].url;
-          } else if (item.image.url) {
-            imageUrl = item.image.url;
-          }
-        }
-
-        return {
-          id: String(item.documentId || item.id),
-          type: item.type,
-          subtype: item.subtype || '',
-          title: item.title,
-          location: item.location,
-          price: item.price,
-          rating: Number(item.rating) || 0,
-          reviews: Number(item.reviews) || 0,
-          image: imageUrl, 
-          host: 'x',
-          description: item.description,
-          featured: item.featured,
-          content: [],
-        };
+      const mappedData = await fetchArticles({
+        page: targetPage,
+        searchQuery: currentQuery,
+        subtype: selectedType,
+        maxPrice: maxPrice,
+        region: selectedRegion,
+        duration: maxDuration
       });
 
       setServices(prev => shouldAppend ? [...prev, ...mappedData] : mappedData);
       setPage(targetPage);
-      setHasMorePages(mappedData.length === PAGINATION_LIMIT);
+      setHasMorePages(mappedData.length > 0);
     } catch (e) {
-      console.error(e);
+      console.error("Explore Screen Fetch Error: ", e);
     } finally {
       setIsLoading(false);
       setIsMoreLoading(false);
     }
-  }, []);
+  }, [selectedType, maxPrice, maxDuration, selectedRegion]);
 
-  // ✅ INITIAL PAGE MOUNT MOUNT LAYER
   useEffect(() => {
-    loadData(1, '', false);
-  }, [loadData]);
+    loadData(1, searchQuery, false);
+  }, [selectedType, maxPrice, maxDuration, selectedRegion]);
 
-  // ✅ DEBOUNCED TRIGGER FOR LIVE TEXT TYPING
   const handleSearchChange = (text: string) => {
     setSearchQuery(text);
-
-    // Clear previous timer when user keeps typing fast
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-
-    // Wait exactly 500ms after the user stops typing before making the network request
-    debounceTimerRef.current = setTimeout(() => {
-      loadData(1, text, false); // Reset feed layout back to page 1 for the new search parameter
-    }, 500);
+    debounceTimerRef.current = setTimeout(() => loadData(1, text, false), 500);
   };
 
-  // ✅ CLEAN ACTION RESET FOR EXPLICIT BUTTON CLEARS
   const handleClearSearch = () => {
     setSearchQuery('');
+    setSelectedRegion(null);
+    setSelectedType(null);
+    setMaxPrice(2000000);
+    setMaxDuration(30);
+
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     loadData(1, '', false);
   };
 
-  // ✅ INFINITE SCROLL TRIGGERS SEQUENTIALLY REGARDLESS OF GLOBAL FILTERS
   const handleLoadMore = useCallback(() => {
     if (isMoreLoading || !hasMorePages) return;
-    loadData(page + 1, searchQuery, true); // Notice shouldAppend is true
+    loadData(page + 1, searchQuery, true);
   }, [page, hasMorePages, isMoreLoading, searchQuery, loadData]);
 
   const renderItem = useCallback(({ item }: { item: Service }) => (
-    <ServiceCard 
-      service={item} 
-      onPress={() => (navigation.navigate as any)('BookingDetails', { service: item })} 
-    />
+    <ServiceCard service={item} onPress={() => (navigation.navigate as any)('BookingDetails', { service: item })} />
   ), [navigation]);
-
-  const renderFooter = useCallback(() => {
-    if (!isMoreLoading) return null;
-    return (
-      <View style={styles.footerLoader}>
-        <ActivityIndicator size="small" color={colors.primary} />
-      </View>
-    );
-  }, [isMoreLoading]);
+  
+  const getBubbleLeftPosition = () => {
+    const minVal = 1;
+    const maxVal = 30;
+    const percentage = (maxDuration - minVal) / (maxVal - minVal);
+    const thumbRadiusPadding = 12; 
+    const bubbleWidthAllocation = 45; 
+    
+    return percentage * (sliderWidth - thumbRadiusPadding * 2) - bubbleWidthAllocation / 2 + thumbRadiusPadding;
+  };
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
@@ -181,43 +177,120 @@ export default function ExploreScreen() {
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <FadeInView delay={100} duration={700}>
-            <View style={styles.heroSection}>
-              <Text style={styles.heroHeading}>Hi, {userData?.firstName || 'Guest'}</Text>
-            </View>
+            <Text style={styles.heroHeading}>Hi, {userData?.firstName || 'Guest'}</Text>
           </FadeInView>
         </View>
         
-        <SearchBar 
-          value={searchQuery} 
-          onChangeText={handleSearchChange} // Uses debounced hook layout
-          placeholder="Where do you want to go ?" 
-          onClear={handleClearSearch} 
-        />
+        <View style={styles.searchRowContainer}>
+          <View style={{ flex: 1 }}>
+            <SearchBar value={searchQuery} onChangeText={handleSearchChange} placeholder="Where to go?" onClear={handleClearSearch} />
+          </View>
+        </View>
+
+        <View style={styles.filterSectionWrapper}>
+          <Text style={styles.inlineSectionLabel}>Region</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScrollContainer}>
+            <TouchableOpacity 
+              style={[styles.categoryChip, !selectedRegion && styles.activeCategoryChip]} 
+              onPress={() => setSelectedRegion(null)}
+            >
+              <Text style={[styles.categoryChipText, !selectedRegion && styles.activeCategoryChipText]}>All Regions</Text>
+            </TouchableOpacity>
+            {REGION_TYPES.filter(r => r.id !== 'all').map((reg) => (
+              <TouchableOpacity 
+                key={reg.id} 
+                style={[styles.categoryChip, selectedRegion === reg.id && styles.activeCategoryChip]} 
+                onPress={() => setSelectedRegion(reg.id)} // Drops token string cleanly down to state hook arrays
+              >
+                <Text style={[styles.categoryChipText, selectedRegion === reg.id && styles.activeCategoryChipText]}>{reg.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+
+        <View style={styles.filterSectionWrapper}>
+          <Text style={styles.inlineSectionLabel}>Destination Type</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScrollContainer}>
+            <TouchableOpacity style={[styles.categoryChip, !selectedType && styles.activeCategoryChip]} onPress={() => setSelectedType(null)}>
+              <Text style={[styles.categoryChipText, !selectedType && styles.activeCategoryChipText]}>All Tours</Text>
+            </TouchableOpacity>
+            {DESTINATION_TYPES.map((cat) => (
+              <TouchableOpacity key={cat.id} style={[styles.categoryChip, selectedType === cat.id && styles.activeCategoryChip]} onPress={() => setSelectedType(cat.id)}>
+                <Text style={[styles.categoryChipText, selectedType === cat.id && styles.activeCategoryChipText]}>{cat.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        <View style={styles.filterSectionWrapper}>
+          <Text style={styles.inlineSectionLabel}>Budget (INR/Person)</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScrollContainer}>
+            {BUDGET_PRESETS.map((preset) => (
+              <TouchableOpacity key={preset.value} style={[styles.presetChip, maxPrice === preset.value && styles.activePresetChip]} onPress={() => setMaxPrice(preset.value)}>
+                <Text style={[styles.presetChipText, maxPrice === preset.value && styles.activePresetChipText]}>{preset.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        <View style={styles.filterSectionWrapper}>
+          <Text style={styles.inlineSectionLabel}>Max Duration</Text>
+          <View 
+            style={styles.sliderInteractiveWrapper}
+            onLayout={(e) => setSliderWidth(e.nativeEvent.layout.width)}
+          >
+            {/* Absolute indicator floating tracking chip */}
+            <View style={[styles.floatingBubbleContainer, { left: getBubbleLeftPosition() }]}>
+              <Text style={styles.floatingBubbleText} numberOfLines={1}>
+                {maxDuration === 30 ? 'Any' : `${maxDuration}d`}
+              </Text>
+            </View>
+
+            <Slider
+              style={styles.sliderElement}
+              minimumValue={1}
+              maximumValue={30}
+              step={1}
+              value={maxDuration}
+              onValueChange={setMaxDuration}
+              onSlidingComplete={(val) => {
+                // Triggers network lookup requests only when a user leaves hold coordinates to conserve network assets
+                loadData(1, searchQuery, false);
+              }}
+              minimumTrackTintColor={colors.primary}
+              maximumTrackTintColor="#e0e0e0"
+              thumbTintColor={colors.primary}
+            />
+
+            <View style={styles.sliderAxisLabels}>
+              <Text style={styles.axisText}>1 Day</Text>
+              <Text style={styles.axisText}>30 Days</Text>
+            </View>
+          </View>
+        </View>
       </View>
 
+      {/* Main FlashList Feed Interface block */}
       <View style={styles.content}>
         {isLoading ? (
           <View style={styles.emptyState}>
             <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.emptyText, { marginTop: spacing.md }]}>Searching databases...</Text>
+            <Text style={[styles.emptyText, { marginTop: spacing.md }]}>Searching destinations...</Text>
           </View>
         ) : services.length > 0 ? (
-          <FlashList 
-            data={services} // Displays mapped data array directly
-            renderItem={renderItem} 
-            estimatedItemSize={280} 
-            showsVerticalScrollIndicator={false} 
-            contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom }]} 
+          <FlashList
+            data={services}
+            renderItem={renderItem}
+            estimatedItemSize={280}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom }]}
             onEndReached={handleLoadMore}
             onEndReachedThreshold={0.8}
-            drawDistance={300}
-            ListFooterComponent={renderFooter}
           />
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>🔍</Text>
-            <Text style={styles.emptyTitle}>No results found</Text>
-            <Text style={styles.emptyText}>Try adjusting your search criteria</Text>
+            <Text style={styles.emptyText}>No destination matches found.</Text>
           </View>
         )}
       </View>
@@ -226,20 +299,30 @@ export default function ExploreScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.backgroundGray },
-  header: { padding: spacing.md, gap: spacing.md, backgroundColor: colors.background, borderBottomWidth: 1, borderBottomColor: colors.lightGray },
-  titleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingRight: spacing.md },
-  heroSection: { paddingLeft: spacing.lg, paddingTop: spacing.lg, paddingBottom: spacing.lg, backgroundColor: colors.background },
-  heroHeading: { ...typography.h1, color: colors.dark, letterSpacing: -0.5, lineHeight: 44 },
-  
-  // ✅ CRITICAL STYLE STRATEGY: Forces the wrapper to lock dimensions to the device screen bounds
-  content: { flex: 1, minHeight: 1 }, 
-  
-  listContent: { padding: spacing.md },
-  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.xl },
-  emptyIcon: { fontSize: 64, marginBottom: spacing.md },
-  emptyTitle: { fontSize: 20, fontWeight: '700', color: colors.dark, marginBottom: spacing.sm },
-  emptyText: { fontSize: 16, color: colors.gray, textAlign: 'center' },
-  footerLoader: { paddingVertical: spacing.md, alignItems: 'center', justifyContent: 'center' }
-
+  container: { flex: 1, backgroundColor: '#fff' },
+  header: { paddingHorizontal: spacing.md, paddingBottom: spacing.sm, backgroundColor: '#fff' },
+  titleRow: { marginBottom: spacing.xs },
+  heroHeading: { fontSize: 24, fontFamily: typography.bold, color: colors.text },
+  searchRowContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
+  filterSectionWrapper: { marginTop: spacing.xs, marginBottom: 2 },
+  inlineSectionLabel: { fontSize: 12, fontFamily: typography.bold, color: colors.gray || '#666', marginBottom: 4 },
+  chipsScrollContainer: { paddingVertical: 4, alignItems: 'center' },
+  categoryChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, backgroundColor: '#f0f0f0', marginRight: 8 },
+  activeCategoryChip: { backgroundColor: colors.primary },
+  categoryChipText: { fontSize: 13, fontFamily: typography.medium, color: colors.text },
+  activeCategoryChipText: { color: '#fff' },
+  presetChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, backgroundColor: '#f5f5f5', marginRight: 8, borderWidth: 1, borderColor: '#e0e0e0' },
+  activePresetChip: { backgroundColor: colors.primary, borderColor: colors.primary },
+  presetChipText: { fontSize: 13, color: colors.text },
+  activePresetChipText: { color: '#fff', fontFamily: typography.bold },
+  sliderInteractiveWrapper: { marginTop: 24, paddingHorizontal: 2, position: 'relative' },
+  floatingBubbleContainer: {position: 'absolute',top: -24,width: 45,backgroundColor: colors.primary,borderRadius: 6,paddingVertical: 2,alignItems: 'center',justifyContent: 'center'},
+  floatingBubbleText: {fontSize: 11,fontFamily: typography.bold,color: '#fff'},
+  sliderElement: { width: '100%', height: 30, ...Platform.select({ web: { cursor: 'pointer' } }) },
+  sliderAxisLabels: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4, marginTop: -2 },
+  axisText: { fontSize: 10, color: '#999', fontFamily: typography.regular },
+  content: { flex: 1 },
+  listContent: { paddingHorizontal: spacing.md },
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
+  emptyText: { fontSize: 14, color: colors.gray, fontFamily: typography.regular }
 });

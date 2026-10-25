@@ -11,26 +11,73 @@ const requestedFields = [
   'title',
   'location',
   'price',
+  'price_number',
   'rating',
   'reviews',
   'description',
-  'featured'
+  'featured',
+  'duration'
 ];
 
 const fieldsQueryString = requestedFields
   .map((field, index) => `fields[${index}]=${field}`)
   .join('&');
 
+// FIX: Added interface contract explicitly so parameter fields map successfully
+interface FetchArticlesParams {
+  page?: number;
+  searchQuery?: string;
+  subtype?: string | null;
+  maxPrice?: number;
+  region?: string | null;
+  duration?: number;
+}
+
 /**
- * Fetches only the first page of articles, excluding the heavy 'content' attribute.
- * Pass a specific page number later when loading more from the explore page.
+ * Fetches filtered and paginated articles from Strapi
  */
-export const fetchArticles = async (page: number = 1): Promise<Service[]> => {
+export const fetchArticles = async ({
+  page = 1,
+  searchQuery = '',
+  subtype = null,
+  maxPrice = 2000000,
+  region = null,
+  duration = 30
+}: FetchArticlesParams = {}): Promise<Service[]> => {
   try {
     const loadedServices: Service[] = [];
 
-    //Fetch data from Strapi (only requested fields )
-    const url = `${STRAPI_URL}/api/articles?pagination[page]=${page}&pagination[pageSize]=${PAGINATION_LIMIT}&${fieldsQueryString}&populate[image][fields][0]=url`;
+    // Base URL setup with pagination parameters and image inclusion fields
+    let url = `${STRAPI_URL}/api/articles?pagination[page]=${page}&pagination[pageSize]=${PAGINATION_LIMIT}&${fieldsQueryString}&populate[image][fields][0]=url`;
+    
+    // Dynamic Filter 1: Text Search (Properly indexed $or groups for Strapi)
+    if (searchQuery.trim() !== '') {
+      const cleanQuery = encodeURIComponent(searchQuery.trim());
+      // Explicitly adding numerical indices [0] and [1] tells Strapi to evaluate this as a proper logical array
+      url += `&filters[$or][0][title][$containsi]=${cleanQuery}&filters[$or][1][location][$containsi]=${cleanQuery}`;
+    }
+    
+    // Dynamic Filter 2: Subtype Selection
+    if (subtype) {
+      url += `&filters[subtype][$eq]=${subtype}`;
+    }
+    
+    // Dynamic Filter 3: Price Ceiling via the true Number column
+    if (maxPrice && maxPrice < 2000000) {
+      url += `&filters[price_number][$lte]=${maxPrice}`;
+    }
+
+    // Dynamic Filter 4: Duration constraint filtering via Strapi standard operators
+    if (duration && duration < 30) {
+      url += `&filters[duration][$lte]=${duration}`;
+    }
+
+    //Dynamic Filter 5: Region Mapping to Strapi 'type' column with Title Case transformation
+    if (region) {
+      // Pass the clean lowercase 'international' or 'domestic' string directly to match the DB
+      url += `&filters[type][$eq]=${region}`; 
+    }
+    //console.log("DEBUG: Outgoing Strapi Request Target URL string ->", url);
     
     const response = await fetch(url);
     
@@ -39,22 +86,33 @@ export const fetchArticles = async (page: number = 1): Promise<Service[]> => {
       console.error(`Strapi API Error (${response.status}):`, errorText);
       return [];
     }
-    const data = await response.json();
+    
+    const json = await response.json();
+    //console.log(`DEBUG RESPONSE: Found ${json?.data?.length || 0} base data matching items array.`);
+    
 
-    if (!data?.data || data.data.length === 0) return [];
+    const rawData = json?.data || [];
 
-    for (let i = 0; i < data.data.length; i++) {
-      const item = data.data[i];
+    for (let i = 0; i < rawData.length; i++) {
+      const item = rawData[i];
 
-      //Strapi v5 media fields returns an object directly or via arrays
-      let imageUrl = 'https://picsum.photos'; // ✅ High-availability fast placeholder link
+      let imageUrl = 'https://picsum.photos'; 
+
       if (item.image) {
+        // If Strapi returns it as an array due to fields[0]=url positioning
         if (Array.isArray(item.image) && item.image[0]?.url) {
           imageUrl = item.image[0].url;
-        } else if (item.image.url) {
+        } 
+        // Fallback if it comes as a straight single object mapping block
+        else if (item.image.url) {
           imageUrl = item.image.url;
         }
       }
+
+// Prefixes your backend domain cleanly to local upload formats
+if (imageUrl && !imageUrl.startsWith('http')) {
+  imageUrl = `${STRAPI_URL}${imageUrl}`;
+}
 
       loadedServices.push({
         id: String(item.documentId || item.id),
@@ -62,14 +120,19 @@ export const fetchArticles = async (page: number = 1): Promise<Service[]> => {
         subtype: item.subtype || '',
         title: item.title,
         location: item.location,
-        price: item.price,
+
+        price: item.price ? String(item.price) : `₹${Number(item.price_number || 0).toLocaleString('en-IN')}`,
+        price_number: item.price_number !== undefined && item.price_number !== null 
+          ? Number(item.price_number) 
+          : (Number(String(item.price).replace(/[^0-9]/g, '')) || 0),
+        
         rating: Number(item.rating) || 0,
         reviews: Number(item.reviews) || 0,
         image: imageUrl, 
         host: 'x',
         description: item.description,
         featured: item.featured,
-        content: [], // Safe empty array placeholder for the app startup lifecycle
+        content: [], 
       });
     }
     
@@ -79,7 +142,6 @@ export const fetchArticles = async (page: number = 1): Promise<Service[]> => {
     return []; 
   }
 };
-
 /**
  * Fetches only the 'content' attribute for a specific article ID.
  * This ensures we never load heavy rich text data on app startup.
@@ -143,11 +205,12 @@ type StrapiRichTextContentNode =
 
 export interface Service {
   id: string;
-  type: 'delivery' | 'travel';
-  subtype: '';
+  type: string;
+  subtype: string;
   title: string;
   location: string;
-  price: number;
+  price: string;          // Changed to string to safely contain the text representation
+  price_number: number;   // Maintained separately to process math operations internally
   rating: number;
   reviews: number;
   image: string;

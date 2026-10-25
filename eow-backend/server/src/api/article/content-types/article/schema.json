@@ -58,6 +58,12 @@
     },
     "featured": {
       "type": "string"
+    },
+    "price_number": {
+      "type": "integer"
+    },
+    "duration": {
+      "type": "integer"
     }
   }
 }
