@@ -7,7 +7,8 @@ import {
   Platform, 
   ScrollView, 
   TouchableOpacity,
-  Dimensions
+  Dimensions,
+  Animated 
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
@@ -24,7 +25,6 @@ import { colors } from '../../constants/colors';
 import { spacing } from '../../constants/spacing';
 import { typography } from '../../constants/typography';
 
-// Import the centralized fetch helper directly
 import { Service, fetchArticles } from '../../mock/data';
 
 interface CachedUser {
@@ -47,7 +47,7 @@ const DESTINATION_TYPES = [
 const BUDGET_PRESETS = [
   { label: 'Any Price', value: 2000000 },
   { label: 'Under ₹25K', value: 25000 },
-  { label: 'Under ₹50K', value: 50000 },
+  { label: 'Under ₹5K', value: 50000 },
   { label: 'Under ₹1L', value: 100000 },
   { label: 'Under ₹2.5L', value: 250000 },
   { label: 'Under ₹5L', value: 500000 },
@@ -77,7 +77,27 @@ export default function ExploreScreen() {
   const [maxPrice, setMaxPrice] = useState<number>(2000000);
   
   const [maxDuration, setMaxDuration] = useState<number>(30);
-  const [sliderWidth, setSliderWidth] = useState<number>(Dimensions.get('window').width - spacing.md * 2);
+  
+  // Responsive layout measurements
+  const [windowWidth, setWindowWidth] = useState(Dimensions.get('window').width);
+  const [sliderWidth, setSliderWidth] = useState<number>(windowWidth - spacing.md * 2);
+
+  // 1. Monitor layout changes dynamically to recalculate width thresholds and grid parameters
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setWindowWidth(window.width);
+      setSliderWidth(window.width - spacing.md * 2);
+    });
+    return () => subscription.remove();
+  }, []);
+
+  // Determine active dynamic column properties matching an Instagram-style grid approach
+  const isLargeScreen = windowWidth >= 768;
+  const numColumns = isLargeScreen ? (windowWidth >= 1200 ? 3 : 2) : 1;
+
+  const filterAnimatedValue = useRef(new Animated.Value(1)).current; 
+  const lastScrollY = useRef<number>(0); 
+  const isFilterVisible = useRef<boolean>(true); 
 
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   useEffect(() => {
@@ -85,7 +105,6 @@ export default function ExploreScreen() {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     };
   }, []);
-
 
   useFocusEffect(
     useCallback(() => {
@@ -156,9 +175,12 @@ export default function ExploreScreen() {
     loadData(page + 1, searchQuery, true);
   }, [page, hasMorePages, isMoreLoading, searchQuery, loadData]);
 
+  // 2. Wrap item render logic inside an interactive card container that sizes properly across grid lines
   const renderItem = useCallback(({ item }: { item: Service }) => (
-    <ServiceCard service={item} onPress={() => (navigation.navigate as any)('BookingDetails', { service: item })} />
-  ), [navigation]);
+    <View style={isLargeScreen ? styles.gridCardWrapper : styles.singleCardWrapper}>
+      <ServiceCard service={item} onPress={() => (navigation.navigate as any)('BookingDetails', { service: item })} />
+    </View>
+  ), [navigation, isLargeScreen]);
   
   const getBubbleLeftPosition = () => {
     const minVal = 1;
@@ -170,129 +192,180 @@ export default function ExploreScreen() {
     return percentage * (sliderWidth - thumbRadiusPadding * 2) - bubbleWidthAllocation / 2 + thumbRadiusPadding;
   };
 
+  const handleScroll = (event: any) => {
+    const currentY = event.nativeEvent.contentOffset.y; 
+    const deltaY = currentY - lastScrollY.current; 
+    
+    if (currentY <= 10) { 
+      if (!isFilterVisible.current) { 
+        isFilterVisible.current = true; 
+        Animated.timing(filterAnimatedValue, { 
+          toValue: 1, 
+          duration: 250, 
+          useNativeDriver: false, 
+        }).start(); 
+      }
+      lastScrollY.current = currentY; 
+      return; 
+    }
+
+    if (deltaY > 5 && isFilterVisible.current) { 
+      isFilterVisible.current = false; 
+      Animated.timing(filterAnimatedValue, { 
+        toValue: 0, 
+        duration: 200, 
+        useNativeDriver: false, 
+      }).start(); 
+    } 
+    else if (deltaY < -5 && !isFilterVisible.current) { 
+      isFilterVisible.current = true; 
+      Animated.timing(filterAnimatedValue, { 
+        toValue: 1, 
+        duration: 250, 
+        useNativeDriver: false, 
+      }).start(); 
+    }
+
+    lastScrollY.current = currentY; 
+  };
+
+  const filterHeight = filterAnimatedValue.interpolate({ 
+    inputRange: [0, 1], 
+    outputRange: [0, 310], 
+  }); 
+
+  const filterOpacity = filterAnimatedValue.interpolate({ 
+    inputRange: [0, 0.5, 1], 
+    outputRange: [0, 0, 1], 
+  }); 
+
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <AppHeader notificationCount={0} />
 
-      <View style={styles.header}>
-        <View style={styles.titleRow}>
-          <FadeInView delay={100} duration={700}>
-            <Text style={styles.heroHeading}>Hi, {userData?.firstName || 'Guest'}</Text>
-          </FadeInView>
-        </View>
-        
-        <View style={styles.searchRowContainer}>
-          <View style={{ flex: 1 }}>
-            <SearchBar value={searchQuery} onChangeText={handleSearchChange} placeholder="Where to go?" onClear={handleClearSearch} />
+      {/* Main Content Layout limits container expansion width on ultra-wide desktop monitors */}
+      <View style={styles.mainLayoutLimiter}>
+        <View style={styles.header}>
+          <View style={styles.titleRow}>
+            <FadeInView delay={100} duration={700}>
+              <Text style={styles.heroHeading}>Hi, {userData?.firstName || 'Guest'}</Text>
+            </FadeInView>
           </View>
-        </View>
+          
+          <View style={styles.searchRowContainer}>
+            <View style={{ flex: 1 }}>
+              <SearchBar value={searchQuery} onChangeText={handleSearchChange} placeholder="Where to go?" onClear={handleClearSearch} />
+            </View>
+          </View>
 
-        <View style={styles.filterSectionWrapper}>
-          <Text style={styles.inlineSectionLabel}>Region</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScrollContainer}>
-            <TouchableOpacity 
-              style={[styles.categoryChip, !selectedRegion && styles.activeCategoryChip]} 
-              onPress={() => setSelectedRegion(null)}
-            >
-              <Text style={[styles.categoryChipText, !selectedRegion && styles.activeCategoryChipText]}>All Regions</Text>
-            </TouchableOpacity>
-            {REGION_TYPES.filter(r => r.id !== 'all').map((reg) => (
-              <TouchableOpacity 
-                key={reg.id} 
-                style={[styles.categoryChip, selectedRegion === reg.id && styles.activeCategoryChip]} 
-                onPress={() => setSelectedRegion(reg.id)} // Drops token string cleanly down to state hook arrays
+          <Animated.View style={{ height: filterHeight, opacity: filterOpacity, overflow: 'hidden' }}>
+            <View style={styles.filterSectionWrapper}>
+              <Text style={styles.inlineSectionLabel}>Region</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScrollContainer}>
+                <TouchableOpacity 
+                  style={[styles.categoryChip, !selectedRegion && styles.activeCategoryChip]} 
+                  onPress={() => setSelectedRegion(null)}
+                >
+                  <Text style={[styles.categoryChipText, !selectedRegion && styles.activeCategoryChipText]}>All Regions</Text>
+                </TouchableOpacity>
+                {REGION_TYPES.filter(r => r.id !== 'all').map((reg) => (
+                  <TouchableOpacity 
+                    key={reg.id} 
+                    style={[styles.categoryChip, selectedRegion === reg.id && styles.activeCategoryChip]} 
+                    onPress={() => setSelectedRegion(reg.id)}
+                  >
+                    <Text style={[styles.categoryChipText, selectedRegion === reg.id && styles.activeCategoryChipText]}>{reg.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            <View style={styles.filterSectionWrapper}>
+              <Text style={styles.inlineSectionLabel}>Destination Type</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScrollContainer}>
+                <TouchableOpacity style={[styles.categoryChip, !selectedType && styles.activeCategoryChip]} onPress={() => setSelectedType(null)}>
+                  <Text style={[styles.categoryChipText, !selectedType && styles.activeCategoryChipText]}>All Tours</Text>
+                </TouchableOpacity>
+                {DESTINATION_TYPES.map((cat) => (
+                  <TouchableOpacity key={cat.id} style={[styles.categoryChip, selectedType === cat.id && styles.activeCategoryChip]} onPress={() => setSelectedType(cat.id)}>
+                    <Text style={[styles.categoryChipText, selectedType === cat.id && styles.activeCategoryChipText]}>{cat.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            <View style={styles.filterSectionWrapper}>
+              <Text style={styles.inlineSectionLabel}>Budget (INR/Person)</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScrollContainer}>
+                {BUDGET_PRESETS.map((preset) => (
+                  <TouchableOpacity key={preset.value} style={[styles.presetChip, maxPrice === preset.value && styles.activePresetChip]} onPress={() => setMaxPrice(preset.value)}>
+                    <Text style={[styles.presetChipText, maxPrice === preset.value && styles.activePresetChipText]}>{preset.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            <View style={styles.filterSectionWrapper}>
+              <Text style={styles.inlineSectionLabel}>Max Duration</Text>
+              <View 
+                style={styles.sliderInteractiveWrapper}
+                onLayout={(e) => setSliderWidth(e.nativeEvent.layout.width)}
               >
-                <Text style={[styles.categoryChipText, selectedRegion === reg.id && styles.activeCategoryChipText]}>{reg.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-
-        <View style={styles.filterSectionWrapper}>
-          <Text style={styles.inlineSectionLabel}>Destination Type</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScrollContainer}>
-            <TouchableOpacity style={[styles.categoryChip, !selectedType && styles.activeCategoryChip]} onPress={() => setSelectedType(null)}>
-              <Text style={[styles.categoryChipText, !selectedType && styles.activeCategoryChipText]}>All Tours</Text>
-            </TouchableOpacity>
-            {DESTINATION_TYPES.map((cat) => (
-              <TouchableOpacity key={cat.id} style={[styles.categoryChip, selectedType === cat.id && styles.activeCategoryChip]} onPress={() => setSelectedType(cat.id)}>
-                <Text style={[styles.categoryChipText, selectedType === cat.id && styles.activeCategoryChipText]}>{cat.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        <View style={styles.filterSectionWrapper}>
-          <Text style={styles.inlineSectionLabel}>Budget (INR/Person)</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScrollContainer}>
-            {BUDGET_PRESETS.map((preset) => (
-              <TouchableOpacity key={preset.value} style={[styles.presetChip, maxPrice === preset.value && styles.activePresetChip]} onPress={() => setMaxPrice(preset.value)}>
-                <Text style={[styles.presetChipText, maxPrice === preset.value && styles.activePresetChipText]}>{preset.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-
-        <View style={styles.filterSectionWrapper}>
-          <Text style={styles.inlineSectionLabel}>Max Duration</Text>
-          <View 
-            style={styles.sliderInteractiveWrapper}
-            onLayout={(e) => setSliderWidth(e.nativeEvent.layout.width)}
-          >
-            {/* Absolute indicator floating tracking chip */}
-            <View style={[styles.floatingBubbleContainer, { left: getBubbleLeftPosition() }]}>
-              <Text style={styles.floatingBubbleText} numberOfLines={1}>
-                {maxDuration === 30 ? 'Any' : `${maxDuration}d`}
-              </Text>
+                <View style={[styles.floatingBubbleContainer, { left: getBubbleLeftPosition() }]}>
+                  <Text style={styles.floatingBubbleText} numberOfLines={1}>
+                    {maxDuration === 30 ? 'Any' : `${maxDuration}d`}
+                  </Text>
+                </View>
+                <Slider
+                  style={styles.sliderElement}
+                  minimumValue={1}
+                  maximumValue={30}
+                  step={1}
+                  value={maxDuration}
+                  onValueChange={setMaxDuration}
+                  onSlidingComplete={(val) => {
+                    loadData(1, searchQuery, false);
+                  }}
+                  minimumTrackTintColor={colors.primary}
+                  maximumTrackTintColor="#e0e0e0"
+                  thumbTintColor={colors.primary}
+                />
+                <View style={styles.sliderAxisLabels}>
+                  <Text style={styles.axisText}>1 Day</Text>
+                  <Text style={styles.axisText}>30 Days</Text>
+                </View>
+              </View>
             </View>
+          </Animated.View>
+        </View>
 
-            <Slider
-              style={styles.sliderElement}
-              minimumValue={1}
-              maximumValue={30}
-              step={1}
-              value={maxDuration}
-              onValueChange={setMaxDuration}
-              onSlidingComplete={(val) => {
-                // Triggers network lookup requests only when a user leaves hold coordinates to conserve network assets
-                loadData(1, searchQuery, false);
-              }}
-              minimumTrackTintColor={colors.primary}
-              maximumTrackTintColor="#e0e0e0"
-              thumbTintColor={colors.primary}
+        <View style={styles.content}>
+          {isLoading ? (
+            <View style={styles.emptyState}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={[styles.emptyText, { marginTop: spacing.md }]}>Searching destinations...</Text>
+            </View>
+          ) : services.length > 0 ? (
+            /* 3. Re-render FlashList dynamically mapping columns and keys explicitly to accommodate grid switches */
+            <FlashList
+              key={`columns-${numColumns}`}
+              data={services}
+              renderItem={renderItem}
+              numColumns={numColumns}
+              estimatedItemSize={isLargeScreen ? 340 : 280}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom }]}
+              onEndReached={handleLoadMore}
+              onEndReachedThreshold={0.8}
+              onScroll={handleScroll} 
+              scrollEventThrottle={16}
             />
-
-            <View style={styles.sliderAxisLabels}>
-              <Text style={styles.axisText}>1 Day</Text>
-              <Text style={styles.axisText}>30 Days</Text>
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>No destination matches found.</Text>
             </View>
-          </View>
+          )}
         </View>
-      </View>
-
-      {/* Main FlashList Feed Interface block */}
-      <View style={styles.content}>
-        {isLoading ? (
-          <View style={styles.emptyState}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.emptyText, { marginTop: spacing.md }]}>Searching destinations...</Text>
-          </View>
-        ) : services.length > 0 ? (
-          <FlashList
-            data={services}
-            renderItem={renderItem}
-            estimatedItemSize={280}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom }]}
-            onEndReached={handleLoadMore}
-            onEndReachedThreshold={0.8}
-          />
-        ) : (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>No destination matches found.</Text>
-          </View>
-        )}
       </View>
     </View>
   );
@@ -300,6 +373,7 @@ export default function ExploreScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },
+  mainLayoutLimiter: { flex: 1, width: '100%', maxWidth: 1200, alignSelf: 'center' }, // Prevents infinite desktop stretching
   header: { paddingHorizontal: spacing.md, paddingBottom: spacing.sm, backgroundColor: '#fff' },
   titleRow: { marginBottom: spacing.xs },
   heroHeading: { fontSize: 24, fontFamily: typography.bold, color: colors.text },
@@ -322,7 +396,9 @@ const styles = StyleSheet.create({
   sliderAxisLabels: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 4, marginTop: -2 },
   axisText: { fontSize: 10, color: '#999', fontFamily: typography.regular },
   content: { flex: 1 },
-  listContent: { paddingHorizontal: spacing.md },
+  listContent: { paddingHorizontal: spacing.sm },
+  singleCardWrapper: { paddingHorizontal: spacing.xs, width: '100%' },
+  gridCardWrapper: { padding: spacing.xs, flex: 1 }, // Flex allocation creates neat multi-column layouts
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   emptyText: { fontSize: 14, color: colors.gray, fontFamily: typography.regular }
 });

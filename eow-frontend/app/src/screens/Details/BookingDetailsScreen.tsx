@@ -1,12 +1,10 @@
 import { useState, useEffect } from 'react';
-import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
+import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Star, MapPin, ArrowLeft } from 'phosphor-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../../constants/colors';
-import { fetchArticleContent, StrapiRichTextContentNode } from '../../mock/data'; // 👈 Adjust this path to match your data.ts location
-
-const { width } = Dimensions.get('window');
+import { fetchArticleContent, StrapiRichTextContentNode } from '../../mock/data'; // Adjust this path to match your data.ts location
 
 interface BookingDetailsScreenProps {
   route?: any;
@@ -19,7 +17,19 @@ export default function BookingDetailsScreen({ route, navigation }: BookingDetai
   const [confirmationVisible, setConfirmationVisible] = useState(false);
   const [confirmationData, setConfirmationData] = useState<any>(null);
 
-  // ⚡ STATE MANAGEMENT FOR CONTENT LAZY-LOADING
+  // Maintain reactive window size dimensions to handle orientation switches or desktop browser scaling events safely
+  const [windowDimensions, setWindowDimensions] = useState(Dimensions.get('window'));
+
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setWindowDimensions(window);
+    });
+    return () => subscription?.remove();
+  }, []);
+
+  const isDesktopViewport = Platform.OS === 'web' && windowDimensions.width >= 1024;
+
+  // STATE MANAGEMENT FOR CONTENT LAZY-LOADING
   const [articleContent, setArticleContent] = useState<StrapiRichTextContentNode[]>([]);
   const [isContentLoading, setIsContentLoading] = useState<boolean>(true);
 
@@ -37,7 +47,7 @@ export default function BookingDetailsScreen({ route, navigation }: BookingDetai
     content: [],
   };
 
-  // ⚡ LAZY LOAD CONTENT ON MOUNT FOR THE SPECIFIC ARTICLE ID
+  // LAZY LOAD CONTENT ON MOUNT FOR THE SPECIFIC ARTICLE ID
   useEffect(() => {
     async function loadFullArticleBody() {
       if (!service.id) {
@@ -138,19 +148,44 @@ export default function BookingDetailsScreen({ route, navigation }: BookingDetai
         <TouchableOpacity style={styles.backButton} onPress={() => navigation?.goBack()}>
           <ArrowLeft size={24} color={colors.dark} weight="bold" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Booking Details</Text>
+        <Text style={styles.headerTitle}>Tour Details</Text>
         <View style={styles.spacer} />
+      </View>
+
+      {/* Prominent yellow price ticker row aligned cleanly to the left side */}
+      <View style={styles.costTickerRow}>
+        <Text style={styles.costLabel}>Package Cost:</Text>
+        <View style={styles.yellowStickerBadge}>
+          <Text style={styles.stickerText}>
+            {service.price} <Text style={styles.stickerLabelText}>Onwards</Text>
+          </Text>
+        </View>
       </View>
 
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom }}
+        contentContainerStyle={[
+          styles.scrollContainer,
+          isDesktopViewport && { maxWidth: 1200, width: '100%', alignSelf: 'center' }
+        ]}
       >
-        {/* Hero Image */}
-        <View style={styles.imageContainer}>
-          <Image source={{ uri: service.image }} style={styles.image} />
-          <LinearGradient colors={['transparent', 'rgba(0,0,0,0.4)']} style={styles.gradient} />
+        {/* 1. Wrapped the picture frame inside a padding structure helper to inject margins on mobile screen viewports */}
+        <View style={[
+          styles.imageOuterWrapper,
+          isDesktopViewport && styles.imageOuterWrapperDesktop
+        ]}>
+          <View style={[
+            styles.imageContainer, 
+            isDesktopViewport && styles.imageContainerDesktop
+          ]}>
+            <Image 
+              source={{ uri: service.image }} 
+              style={styles.image}
+              resizeMode={isDesktopViewport ? 'contain' : 'cover'} 
+            />
+            {!isDesktopViewport && <LinearGradient colors={['transparent', 'rgba(0,0,0,0.4)']} style={styles.gradient} />}
+          </View>
         </View>
 
         {/* Title Section */}
@@ -186,9 +221,75 @@ const styles = StyleSheet.create({
   backButton: { padding: 4 },
   headerTitle: { fontSize: 18, fontWeight: '600', color: colors.dark, flex: 1, textAlign: 'center' },
   spacer: { width: 32 },
+  
+  costTickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#FAFFA0',
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEEEEE',
+  },
+  costLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.dark,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  yellowStickerBadge: {
+    backgroundColor: '#FFEB3B',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  stickerText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  stickerLabelText: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: '#424242',
+  },
+
   content: { flex: 1 },
-  imageContainer: { width: width, height: 250, position: 'relative' },
-  image: { width: '100%', height: '100%', resizeMode: 'cover' },
+  scrollContainer: { paddingBottom: 16 },
+  
+  // 2. Added mobile margin shell spacing variables
+  imageOuterWrapper: {
+    width: '100%',
+    paddingHorizontal: 16, // Beautiful structural gutters around left and right of the image asset on mobile
+    marginTop: 16,
+  },
+  imageOuterWrapperDesktop: {
+    paddingHorizontal: 0, // Clears the mobile outer buffer container when using the desktop layout limiter shell
+    marginTop: 0,
+  },
+  imageContainer: { 
+    width: '100%',
+    height: 220, // Adjusted layout scale slightly to match narrow mobile card container dimensions nicely
+    position: 'relative', 
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12, // Smooth corner radius curves blending beautifully with surrounding context fields
+    overflow: 'hidden',
+  },
+  imageContainerDesktop: {
+    height: 450,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  image: { width: '100%', height: '100%' },
   gradient: { ...StyleSheet.absoluteFillObject },
   titleSection: { padding: 16 },
   title: { fontSize: 24, fontWeight: 'bold', color: colors.dark, marginBottom: 8 },
