@@ -1,4 +1,5 @@
 import 'react-native-gesture-handler';
+import * as Linking from 'expo-linking';
 import React, { useState, useEffect } from 'react';
 import * as SplashScreenNative from 'expo-splash-screen';
 import { NavigationContainer } from '@react-navigation/native';
@@ -9,8 +10,44 @@ import RootNavigator from './src/navigation';
 import SplashScreen from './src/screens/Auth/SplashScreen';
 import { fetchArticles } from './src/mock/data';
 
-// Keep the native OS splash screen frozen on boot
 SplashScreenNative.preventAutoHideAsync().catch(() => {});
+
+const prefix = Linking.createURL('/');
+const webDomain = process.env.EXPO_PUBLIC_WEB_DOMAIN || 'https://yourdomain.com';
+const customScheme = `${process.env.EXPO_PUBLIC_DEEP_LINK_SCHEME || 'eow'}://`;
+
+const linking = {
+  prefixes: [prefix, webDomain, customScheme],
+  config: {
+    screens: {
+      Explore: {
+        screens: {
+          ExplorePlaces: 'explore',
+          BookingDetails: {
+            path: 'explore/:slug',
+            // 🎯 FIXED: Move param filtering block here so React Navigation strips 'service' from the address bar
+            parse: {
+              slug: (slug: string) => {
+                return slug;
+              }
+            },
+            stringify: {
+              slug: (slug: string) => {
+                return slug;
+              },
+              // By omitting or overriding 'service' here, it will not append the text block string data to the URL
+              service: () => null 
+            }
+          }, 
+        },
+      },
+      'Contact Us': {
+        screens: { ContactUsMain: 'contact' }
+      },
+      Profile: 'profile',
+    },
+  },
+};
 
 export default function App() {
   const [dataLoaded, setDataLoaded] = useState(false);
@@ -19,29 +56,30 @@ export default function App() {
   useEffect(() => {
     async function initializeApplicationData() {
       try {
-        // Fetch all your Strapi data behind the native splash screen
         await fetchArticles();
       } catch (error) {
         console.error("Initialization pipeline failed:", error);
       } finally {
         setDataLoaded(true);
-        // Hide the native screen to reveal the app layout instantly
         await SplashScreenNative.hideAsync();
       }
     }
-
     initializeApplicationData();
   }, []);
 
   return (
     <SafeAreaProvider>
       <View style={styles.container}>
-        {/* 1. Mount your navigation container instantly so it initializes data ready */}
-        <NavigationContainer>
+        <NavigationContainer 
+          linking={linking}
+          onStateChange={(state) => {
+            // 📡 ROUTE TREE TELEMETRY ACTION WATCHER
+            const route = state?.routes[state.index];
+          }}
+        >
           <RootNavigator />
         </NavigationContainer>
 
-        {/* 2. Absolute overlay layer: Mounts once and handles its own dismissal smoothly */}
         {!animationDone && (
           <View style={StyleSheet.absoluteFill}>
             <SplashScreen 
@@ -55,8 +93,4 @@ export default function App() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
+const styles = StyleSheet.create({ container: { flex: 1 } });

@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Star, MapPin, ArrowLeft } from 'phosphor-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../../constants/colors';
-import { fetchArticleContent, StrapiRichTextContentNode } from '../../mock/data'; // Adjust this path to match your data.ts location
+import { fetchArticleContent, StrapiRichTextContentNode, fetchArticles } from '../../mock/data'; // Adjust this path to match your data.ts location
 
 interface BookingDetailsScreenProps {
   route?: any;
@@ -33,10 +33,14 @@ export default function BookingDetailsScreen({ route, navigation }: BookingDetai
   const [articleContent, setArticleContent] = useState<StrapiRichTextContentNode[]>([]);
   const [isContentLoading, setIsContentLoading] = useState<boolean>(true);
 
-  const service = route?.params?.service || {
+  // 1. Extract parameters from the navigation state tracker
+  const routeService = route?.params?.service;
+  const routeSlug = route?.params?.slug;
+
+  const [service, setService] = useState<any>(routeService || {
     id: '',
-    title: 'Default Title',
-    location: 'Default Location',
+    title: 'Loading...',
+    location: 'Loading...',
     price: 0,
     rating: 0,
     reviews: 0,
@@ -45,23 +49,64 @@ export default function BookingDetailsScreen({ route, navigation }: BookingDetai
     description: 'Default',
     type: 'travel',
     content: [],
-  };
+  });
+
+    // EFFECT A: Resolve full service fields asynchronously ONLY if accessed via slug deep link
+  useEffect(() => {
+    async function resolveArticleFromSlug() {
+      // Fetch only if we have a slug but no direct object profile context available
+      if (routeSlug && !routeService) {
+        try {
+          setIsContentLoading(true);
+          const allArticles = await fetchArticles({ searchQuery: '' });
+          
+          const slugify = (text: string) => 
+            text ? text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') : '';
+
+          const matchedArticle = allArticles.find((item: any) => {
+            const targetSlug = routeSlug.toLowerCase().trim();
+            const itemSlug = item.slug ? item.slug.toLowerCase().trim() : slugify(item.title);
+            return itemSlug === targetSlug;
+          });
+          
+          if (matchedArticle) {
+            setService(matchedArticle);
+          } else {
+            setService((prev: any) => ({ ...prev, title: 'Tour Not Found' }));
+            setIsContentLoading(false);
+          }
+        } catch (error) {
+          console.error("Failed resolving deep link content slug structure:", error);
+          setIsContentLoading(false);
+        }
+      }
+    }
+    resolveArticleFromSlug();
+  }, [routeSlug, routeService]);
 
   // LAZY LOAD CONTENT ON MOUNT FOR THE SPECIFIC ARTICLE ID
   useEffect(() => {
     async function loadFullArticleBody() {
       if (!service.id) {
-        setIsContentLoading(false);
+        if (!routeSlug) {
+          setIsContentLoading(false);
+        }
         return;
       }
-      setIsContentLoading(true);
-      const contentData = await fetchArticleContent(service.id);
-      setArticleContent(contentData);
-      setIsContentLoading(false);
+      
+      try {
+        setIsContentLoading(true);
+        const contentData = await fetchArticleContent(service.id);
+        setArticleContent(contentData);
+      } catch (error) {
+        console.error("Failed loading rich text body:", error);
+      } finally {
+        setIsContentLoading(false);
+      }
     }
 
     loadFullArticleBody();
-  }, [service.id]);
+  }, [service.id, routeSlug]);
 
   const handleBookNow = () => {};
   const handleConfirmBooking = () => { setBookingModalVisible(true); };

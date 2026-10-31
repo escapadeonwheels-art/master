@@ -175,12 +175,18 @@ export default function ExploreScreen() {
     loadData(page + 1, searchQuery, true);
   }, [page, hasMorePages, isMoreLoading, searchQuery, loadData]);
 
-  // 2. Wrap item render logic inside an interactive card container that sizes properly across grid lines
   const renderItem = useCallback(({ item }: { item: Service }) => (
-    <View style={isLargeScreen ? styles.gridCardWrapper : styles.singleCardWrapper}>
-      <ServiceCard service={item} onPress={() => (navigation.navigate as any)('BookingDetails', { service: item })} />
-    </View>
-  ), [navigation, isLargeScreen]);
+  <View style={isLargeScreen ? styles.gridCardWrapper : styles.singleCardWrapper}>
+    <ServiceCard 
+      service={item} 
+      onPress={() => {
+        navigation.navigate('BookingDetails' as never, { 
+          slug: item.slug // 👈 Only send the slug here!
+        } as never);
+      }} 
+    />
+  </View>
+), [navigation, isLargeScreen]);
   
   const getBubbleLeftPosition = () => {
     const minVal = 1;
