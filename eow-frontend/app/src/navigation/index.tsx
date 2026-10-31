@@ -11,7 +11,6 @@ import LoginScreen from '../screens/Auth/LoginScreen';
 import RegisterScreen from '../screens/Auth/RegisterScreen';
 import ForgotPasswordScreen from '../screens/Auth/ForgotPasswordScreen';
 import ExploreScreen from '../screens/Explore/ExploreScreen';
-import DetailsScreen from '../screens/Details/DetailsScreen';
 import BookingDetailsScreen from '../screens/Details/BookingDetailsScreen';
 import ProfileScreen from '../screens/Profile/ProfileScreen';
 import ContactUsScreen from '../screens/Bookings/ContactUsScreen';
@@ -23,10 +22,9 @@ const Stack = createNativeStackNavigator();
 function ExploreStack() {
   return (
     <Stack.Navigator>
-      <Stack.Screen name="ExploreList" component={ExploreScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="Details" component={DetailsScreen} options={{ title: '' }} />
+      <Stack.Screen name="ExplorePlaces" component={ExploreScreen} options={{ title: 'Explore', headerShown: false }} />
       <Stack.Screen name="ContactUs" component={ContactUsScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="BookingDetails" component={BookingDetailsScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="BookingDetails" component={BookingDetailsScreen} options={{ title: 'Tour Details', headerShown: false }} />
     </Stack.Navigator>
   );
 }

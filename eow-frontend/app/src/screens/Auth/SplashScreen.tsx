@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../constants/colors';
 import { typography } from '../../constants/typography';
@@ -78,9 +78,10 @@ export default function SplashScreen({ isDataReady, onAnimationComplete }: Splas
           },
         ]}
       >
-        <View style={styles.logoContainer}>
-          <Text style={styles.logo}>🏠</Text>
-        </View>
+        <Image 
+          source={require('../../../assets/eod-splash.gif')} // Update this path to match your file structure
+          style={styles.logo} 
+        />
         
         <Text style={styles.title}>Escapade On Wheels</Text>
         <Text style={styles.tagline}>Follow your passion</Text>
@@ -112,8 +113,12 @@ const styles = StyleSheet.create({
     zIndex: 9999, 
   },
   content: { justifyContent: 'center', alignItems: 'center', marginBottom: spacing.xl },
-  logoContainer: { marginBottom: spacing.lg },
-  logo: { fontSize: 80, textAlign: 'center' },
+  logoContainer: { justifyContent: 'center', alignItems: 'center', },
+  logo: {
+    width: 200,  // You must set an explicit width for local images
+    height: 100, // You must set an explicit height for local images
+    resizeMode: 'contain', // Ensures the image fits nicely without distortion
+  },
   title: { ...typography.h1, color: colors.dark, textAlign: 'center' },
   tagline: { ...typography.body, color: colors.gray, textAlign: 'center', marginTop: spacing.sm, fontWeight: '600' },
   loadingContainer: { position: 'absolute', bottom: spacing.xl },

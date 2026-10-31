@@ -73,7 +73,7 @@ export default function AppHeader({ notificationCount = 3, onNotificationPress }
   return (
     <View style={styles.container}>
       <View style={styles.logoContainer}>
-        <Image source={require('../../../assets/logo/eow.png')} style={styles.logo} resizeMode="contain" />
+        <Image source={require('../../../assets/eow.png')} style={styles.logo} resizeMode="contain" />
         <Text style={styles.appName}>Escapade on Wheels</Text>
       </View>
 

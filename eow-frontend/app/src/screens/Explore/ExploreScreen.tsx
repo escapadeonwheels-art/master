@@ -40,14 +40,14 @@ const DESTINATION_TYPES = [
   { id: 'mountains', label: 'Mountains' },
   { id: 'trekking', label: 'Trekking' },
   { id: 'wildlife', label: 'Wildlife' },
-  { id: 'discover_india', label: 'Discover India' },
-  { id: 'globe_trotting', label: 'Globe Trotting' },
+  { id: 'culture', label: 'Culture' },
+  { id: 'nature', label: 'Nature' }
 ];
 
 const BUDGET_PRESETS = [
   { label: 'Any Price', value: 2000000 },
   { label: 'Under ₹25K', value: 25000 },
-  { label: 'Under ₹5K', value: 50000 },
+  { label: 'Under ₹50K', value: 50000 },
   { label: 'Under ₹1L', value: 100000 },
   { label: 'Under ₹2.5L', value: 250000 },
   { label: 'Under ₹5L', value: 500000 },

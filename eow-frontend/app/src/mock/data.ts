@@ -59,7 +59,8 @@ export const fetchArticles = async ({
     
     // Dynamic Filter 2: Subtype Selection
     if (subtype) {
-      url += `&filters[subtype][$eq]=${subtype}`;
+      const cleanSubtype = encodeURIComponent(subtype.trim());
+      url += `&filters[subtype][$containsi]=${cleanSubtype}`;
     }
     
     // Dynamic Filter 3: Price Ceiling via the true Number column

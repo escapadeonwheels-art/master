@@ -7,23 +7,7 @@ import Button from '../../components/ui/Button';
 
 const { width } = Dimensions.get('window');
 
-const slides = [
-  {
-    image: require('../../../assets/onboard/search.png'),
-    title: 'Discover Amazing Places',
-    description: 'Find unique stays and experiences around the world',
-  },
-  {
-    image: require('../../../assets/onboard/deliver.png'),
-    title: 'Fast Delivery Services',
-    description: 'Get groceries, food, and essentials delivered fast',
-  },
-  {
-    image: require('../../../assets/onboard/happy.png'),
-    title: 'Book Your Experience',
-    description: 'Easy booking and tracking for all your needs',
-  },
-];
+const slides = [];
 
 interface OnboardingScreenProps {
   onComplete: () => void;
