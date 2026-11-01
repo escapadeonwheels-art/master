@@ -16,8 +16,6 @@ export default function BookingDetailsScreen({ route, navigation }: BookingDetai
   const [bookingModalVisible, setBookingModalVisible] = useState(false);
   const [confirmationVisible, setConfirmationVisible] = useState(false);
   const [confirmationData, setConfirmationData] = useState<any>(null);
-
-  // Maintain reactive window size dimensions to handle orientation switches or desktop browser scaling events safely
   const [windowDimensions, setWindowDimensions] = useState(Dimensions.get('window'));
 
   useEffect(() => {
@@ -29,13 +27,19 @@ export default function BookingDetailsScreen({ route, navigation }: BookingDetai
 
   const isDesktopViewport = Platform.OS === 'web' && windowDimensions.width >= 1024;
 
-  // STATE MANAGEMENT FOR CONTENT LAZY-LOADING
   const [articleContent, setArticleContent] = useState<StrapiRichTextContentNode[]>([]);
   const [isContentLoading, setIsContentLoading] = useState<boolean>(true);
 
-  // 1. Extract parameters from the navigation state tracker
+  // Extract parameters strictly from navigation parameters route context
   const routeService = route?.params?.service;
   const routeSlug = route?.params?.slug;
+
+  console.log(`[ROUTE PARAM DECONSTRUCTION LOG]
+    📥 Raw route.params payload:`, route?.params, `
+    📝 Ingested routeSlug text: "${routeSlug}"
+    🏷️ Type of routeSlug: "${typeof routeSlug}"
+    📦 Hex-Encoded Representation: "${routeSlug ? encodeURIComponent(routeSlug) : 'N/A'}"
+  `);
 
   const [service, setService] = useState<any>(routeService || {
     id: '',
@@ -51,27 +55,30 @@ export default function BookingDetailsScreen({ route, navigation }: BookingDetai
     content: [],
   });
 
-    // EFFECT A: Resolve full service fields asynchronously ONLY if accessed via slug deep link
+    // TARGETED RESOLUTION LIFECYCLE EFFECT HOOK
   useEffect(() => {
     async function resolveArticleFromSlug() {
-      // Fetch only if we have a slug but no direct object profile context available
       if (routeSlug && !routeService) {
         try {
           setIsContentLoading(true);
-          const allArticles = await fetchArticles({ searchQuery: '' });
           
-          const slugify = (text: string) => 
-            text ? text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') : '';
+          console.log(`[CHECKPOINT 3A - DETAILS ENTRY] Ingested parameter routeSlug: "${routeSlug}"`);
 
-          const matchedArticle = allArticles.find((item: any) => {
-            const targetSlug = routeSlug.toLowerCase().trim();
-            const itemSlug = item.slug ? item.slug.toLowerCase().trim() : slugify(item.title);
+          // 🎯 FIX: Pass it explicitly using the newly supported 'slug' parameter block configuration
+          const targetedArticles = await fetchArticles({ slug: routeSlug.trim() });
+
+          
+          const matchedArticle = targetedArticles.find((item: any) => {
+            const targetSlug = String(routeSlug).toLowerCase().trim();
+            const itemSlug = String(item.slug || '').toLowerCase().trim();
             return itemSlug === targetSlug;
           });
           
           if (matchedArticle) {
+            console.log(`[DETAILS MATCH SUCCESS] Found Document ID: ${matchedArticle.id}`);
             setService(matchedArticle);
           } else {
+            console.warn(`[DETAILS MATCH FAILURE] 🚨 Could not resolve slug: "${routeSlug}" even with a targeted fetch query.`);
             setService((prev: any) => ({ ...prev, title: 'Tour Not Found' }));
             setIsContentLoading(false);
           }

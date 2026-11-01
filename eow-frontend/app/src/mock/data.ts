@@ -29,6 +29,8 @@ interface FetchArticlesParams {
   maxPrice?: number;
   region?: string | null;
   duration?: number;
+  slug?: string; // 🎯 Added explicit slug parameter filtering mapping contract
+  limit?: number; // 🎯 Added optional limit property to dynamically override global constants
 }
 
 /**
@@ -40,12 +42,23 @@ export const fetchArticles = async ({
   subtype = null,
   maxPrice = 2000000,
   region = null,
-  duration = 30
+  duration = 30,
+  slug = '',
+  limit // 🎯 Accept the dynamic override mapping parameter hook
 }: FetchArticlesParams = {}): Promise<Service[]> => {
   try {
     const loadedServices: Service[] = [];
-    let url = `${STRAPI_URL}/api/articles?pagination[page]=${page}&pagination[pageSize]=${PAGINATION_LIMIT}&${fieldsQueryString}&populate[image][fields][0]=url`;
+
+    // Determine target size dynamically based on parameter presence
+    const activePageSize = limit !== undefined ? limit : PAGINATION_LIMIT;
     
+    let url = `${STRAPI_URL}/api/articles?pagination[page]=${page}&pagination[pageSize]=${activePageSize}&${fieldsQueryString}&populate[image][fields][0]=url`;
+    
+    // 🎯 FIX: Explicit query parameter routing block for accurate slug lookups
+    if (slug.trim() !== '') {
+      url += `&filters[slug][$eq]=${encodeURIComponent(slug.trim())}`;
+    }
+
     if (searchQuery.trim() !== '') {
       const cleanQuery = encodeURIComponent(searchQuery.trim());
       url += `&filters[$or][0][title][$containsi]=${cleanQuery}&filters[$or][1][location][$containsi]=${cleanQuery}`;
@@ -69,12 +82,7 @@ export const fetchArticles = async ({
     }
     
     const response = await fetch(url);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Strapi API Error (${response.status}):`, errorText);
-      return [];
-    }
+    if (!response.ok) return [];
     
     const json = await response.json();
     const rawData = json?.data || [];
@@ -95,31 +103,26 @@ export const fetchArticles = async ({
         imageUrl = `${STRAPI_URL}${imageUrl}`;
       }
 
-      // 🛠️ FALLBACK UTILITY: Create a clean slug from the title if Strapi returns it missing
-      const slugifyFallback = (text: string) => {
-        console.log("slug-creation-from-title is used for title:"+string);
-        return text
-          ? text.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-')
-          : 'tour';
-      };
-
-      // Extract the slug wherever it might be hiding depending on the Strapi version nesting rules
-      const backendSlug = item.slug || item.attributes?.slug || item.slug_name;
-      const verifiedSlug = backendSlug ? String(backendSlug).trim() : slugifyFallback(item.title);
+      // Extract the slug exactly as it is without text transformations or fallbacks
+      const verifiedSlug = item.slug || item.attributes?.slug || item.slug_name || '';
       
+      console.log(`[CHECKPOINT 1 - DATA LAYER] 
+        👉 Title: "${item.title}"
+        👉 Raw Strapi item.slug: "${item.slug}"
+        👉 Final Resolved Slug: "${verifiedSlug}"
+        👉 Document ID: "${item.documentId || item.id}"
+      `);
       loadedServices.push({
         id: String(item.documentId || item.id),
         type: item.type,
         subtype: item.subtype || '',
         title: item.title,
-        slug: verifiedSlug, // 👈 Assigned the verified/fallback slug here
+        slug: verifiedSlug, 
         location: item.location,
-
         price: item.price ? String(item.price) : `₹${Number(item.price_number || 0).toLocaleString('en-IN')}`,
         price_number: item.price_number !== undefined && item.price_number !== null 
           ? Number(item.price_number) 
           : (Number(String(item.price).replace(/[^0-9]/g, '')) || 0),
-        
         rating: Number(item.rating) || 0,
         reviews: Number(item.reviews) || 0,
         image: imageUrl, 

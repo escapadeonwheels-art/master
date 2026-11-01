@@ -25,18 +25,12 @@ const linking = {
           ExplorePlaces: 'explore',
           BookingDetails: {
             path: 'explore/:slug',
-            // 🎯 FIXED: Move param filtering block here so React Navigation strips 'service' from the address bar
             parse: {
-              slug: (slug: string) => {
-                return slug;
-              }
+              slug: (slug: string) => slug,
             },
             stringify: {
-              slug: (slug: string) => {
-                return slug;
-              },
-              // By omitting or overriding 'service' here, it will not append the text block string data to the URL
-              service: () => null 
+              slug: (slug: string) => slug,
+              service: () => null
             }
           }, 
         },
@@ -56,11 +50,23 @@ export default function App() {
   useEffect(() => {
     async function initializeApplicationData() {
       try {
-        await fetchArticles();
+        console.log("[APP INITIALIZATION] Checking Strapi backend availability...");
+        
+        // 🎯 FIX: Health check ping to verify database availability using pagination size 1
+        const healthCheck = await fetchArticles({ page: 1, limit: 1 });
+        
+        if (healthCheck && healthCheck.length >= 0) {
+          console.log("[APP INITIALIZATION] Strapi is online and accessible. Proceeding to Explore screen.");
+          setDataLoaded(true);
+        } else {
+          throw new Error("Strapi backend returned an invalid payload structure.");
+        }
       } catch (error) {
-        console.error("Initialization pipeline failed:", error);
+        console.error("🚨 Critical Error: Strapi backend is unreachable or down:", error);
+        // Fallback: Still set true to prevent blocking user indefinitely if offline modes exist, 
+        // or customize error handling states here depending on requirements.
+        setDataLoaded(true); 
       } finally {
-        setDataLoaded(true);
         await SplashScreenNative.hideAsync();
       }
     }

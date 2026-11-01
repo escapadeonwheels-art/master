@@ -176,17 +176,23 @@ export default function ExploreScreen() {
   }, [page, hasMorePages, isMoreLoading, searchQuery, loadData]);
 
   const renderItem = useCallback(({ item }: { item: Service }) => (
-  <View style={isLargeScreen ? styles.gridCardWrapper : styles.singleCardWrapper}>
-    <ServiceCard 
-      service={item} 
-      onPress={() => {
-        navigation.navigate('BookingDetails' as never, { 
-          slug: item.slug // 👈 Only send the slug here!
-        } as never);
-      }} 
-    />
-  </View>
-), [navigation, isLargeScreen]);
+    <View style={isLargeScreen ? styles.gridCardWrapper : styles.singleCardWrapper}>
+      <ServiceCard 
+        service={item} 
+        onPress={() => {
+
+          console.log(`[CHECKPOINT 2 - EXPLORE LAYER] 
+          🚀 Card Pressed: "${item.title}"
+          🚀 Dispatched Slug Parameter: "${item.slug}"
+        `);
+          
+          navigation.navigate('BookingDetails' as never, { 
+            slug: item.slug
+          } as never);
+        }} 
+      />
+    </View>
+  ), [navigation, isLargeScreen]);
   
   const getBubbleLeftPosition = () => {
     const minVal = 1;
