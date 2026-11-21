@@ -8,7 +8,9 @@ import {
   ScrollView, 
   TouchableOpacity,
   Dimensions,
-  Animated 
+  Animated,
+  Modal,
+  Pressable
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
@@ -34,14 +36,127 @@ interface CachedUser {
   username?: string;
 }
 
-const DESTINATION_TYPES = [
-  { id: 'beaches', label: 'Beaches' },
-  { id: 'cruises', label: 'Cruises' },
-  { id: 'mountains', label: 'Mountains' },
-  { id: 'trekking', label: 'Trekking' },
-  { id: 'wildlife', label: 'Wildlife' },
-  { id: 'culture', label: 'Culture' },
-  { id: 'nature', label: 'Nature' }
+interface DropdownOption<T> {
+  label: string;
+  value: T;
+}
+
+interface FilterDropdownProps<T> {
+  label: string;
+  options: DropdownOption<T>[];
+  selectedValue: T;
+  onSelect: (value: T) => void;
+  isDefault: boolean;
+}
+
+function FilterDropdown<T>({
+  label,
+  options,
+  selectedValue,
+  onSelect,
+  isDefault,
+}: FilterDropdownProps<T>) {
+  const [visible, setVisible] = useState(false);
+  const [menuPos, setMenuPos] = useState({ top: 0, left: 0, width: 170 });
+  const triggerRef = useRef<React.ElementRef<typeof TouchableOpacity>>(null);
+
+  const selectedOption = options.find((opt) => opt.value === selectedValue);
+  const displayLabel = isDefault ? label : selectedOption?.label || label;
+
+  const handleOpen = () => {
+    triggerRef.current?.measureInWindow((x, y, width, height) => {
+      const screenWidth = Dimensions.get('window').width;
+      const dropdownWidth = Math.max(width, 165);
+      // Prevent the menu from overflowing off the right edge of the screen
+      const clampedLeft = Math.min(x, screenWidth - dropdownWidth - 16);
+
+      setMenuPos({
+        top: y + height + 6,
+        left: Math.max(16, clampedLeft),
+        width: dropdownWidth,
+      });
+      setVisible(true);
+    });
+  };
+
+  return (
+    <>
+      <TouchableOpacity
+        ref={triggerRef}
+        style={[styles.dropdownTrigger, !isDefault && styles.activeDropdownTrigger]}
+        onPress={handleOpen}
+        activeOpacity={0.7}
+      >
+        <Text
+          style={[styles.dropdownTriggerText, !isDefault && styles.activeDropdownTriggerText]}
+          numberOfLines={1}
+        >
+          {displayLabel}
+        </Text>
+        <Text style={[styles.dropdownChevron, !isDefault && styles.activeDropdownTriggerText]}>
+          {visible ? '▴' : '▾'}
+        </Text>
+      </TouchableOpacity>
+
+      <Modal
+        visible={visible}
+        transparent
+        animationType="none"
+        onRequestClose={() => setVisible(false)}
+      >
+        <Pressable style={styles.anchoredBackdrop} onPress={() => setVisible(false)}>
+          <View
+            style={[
+              styles.anchoredMenuCard,
+              {
+                top: menuPos.top,
+                left: menuPos.left,
+                minWidth: menuPos.width,
+              },
+            ]}
+            onStartShouldSetResponder={() => true}
+          >
+            <ScrollView style={styles.modalOptionsList} bounces={false}>
+              {options.map((option, idx) => {
+                const isSelected = option.value === selectedValue;
+                return (
+                  <TouchableOpacity
+                    key={idx}
+                    style={[styles.modalOptionItem, isSelected && styles.modalOptionItemSelected]}
+                    onPress={() => {
+                      onSelect(option.value);
+                      setVisible(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.modalOptionText,
+                        isSelected && styles.modalOptionTextSelected,
+                      ]}
+                    >
+                      {option.label}
+                    </Text>
+                    {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
+    </>
+  );
+}
+
+const DESTINATION_TYPES: DropdownOption<string | null>[] = [
+  { value: null, label: 'All Tours' },
+  { value: 'beaches', label: 'Beaches' },
+  { value: 'cruises', label: 'Cruises' },
+  { value: 'mountains', label: 'Mountains' },
+  { value: 'trekking', label: 'Trekking' },
+  { value: 'wildlife', label: 'Wildlife' },
+  { value: 'culture', label: 'Culture' },
+  { value: 'nature', label: 'Nature' },
 ];
 
 const BUDGET_PRESETS = [
@@ -53,10 +168,16 @@ const BUDGET_PRESETS = [
   { label: 'Under ₹5L', value: 500000 },
 ];
 
-const REGION_TYPES = [
-  { id: 'all', label: 'All Regions' },
-  { id: 'international', label: 'International' },
-  { id: 'domestic', label: 'Domestic' },
+const REGION_TYPES: DropdownOption<string | null>[] = [
+  { value: null, label: 'All Regions' },
+  { value: 'international', label: 'International' },
+  { value: 'domestic', label: 'Domestic' },
+];
+
+const SORT_OPTIONS: DropdownOption<string>[] = [
+  { value: 'featured:desc', label: 'Offers' },
+  { value: 'price_number:asc', label: 'Price' },
+  { value: 'duration:asc', label: 'Duration' },
 ];
 
 export default function ExploreScreen() {
@@ -75,6 +196,7 @@ export default function ExploreScreen() {
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [maxPrice, setMaxPrice] = useState<number>(2000000);
+  const [sortBy, setSortBy] = useState<string | null>(null);
   
   const [maxDuration, setMaxDuration] = useState<number>(30);
   
@@ -135,7 +257,8 @@ export default function ExploreScreen() {
         subtype: selectedType,
         maxPrice: maxPrice,
         region: selectedRegion,
-        duration: maxDuration
+        duration: maxDuration,
+        sortBy: sortBy,
       });
 
       setServices(prev => shouldAppend ? [...prev, ...mappedData] : mappedData);
@@ -147,11 +270,11 @@ export default function ExploreScreen() {
       setIsLoading(false);
       setIsMoreLoading(false);
     }
-  }, [selectedType, maxPrice, maxDuration, selectedRegion]);
+  }, [selectedType, maxPrice, maxDuration, selectedRegion, sortBy]);
 
   useEffect(() => {
     loadData(1, searchQuery, false);
-  }, [selectedType, maxPrice, maxDuration, selectedRegion]);
+  }, [selectedType, maxPrice, maxDuration, selectedRegion, sortBy]);
 
   const handleSearchChange = (text: string) => {
     setSearchQuery(text);
@@ -165,6 +288,7 @@ export default function ExploreScreen() {
     setSelectedType(null);
     setMaxPrice(2000000);
     setMaxDuration(30);
+    setSortBy(null);
 
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     loadData(1, '', false);
@@ -243,8 +367,8 @@ export default function ExploreScreen() {
 
   const filterHeight = filterAnimatedValue.interpolate({ 
     inputRange: [0, 1], 
-    outputRange: [0, 310], 
-  }); 
+    outputRange:[0, 115], 
+  });
 
   const filterOpacity = filterAnimatedValue.interpolate({ 
     inputRange: [0, 0.5, 1], 
@@ -271,56 +395,54 @@ export default function ExploreScreen() {
           </View>
 
           <Animated.View style={{ height: filterHeight, opacity: filterOpacity, overflow: 'hidden' }}>
-            <View style={styles.filterSectionWrapper}>
-              <Text style={styles.inlineSectionLabel}>Region</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScrollContainer}>
-                <TouchableOpacity 
-                  style={[styles.categoryChip, !selectedRegion && styles.activeCategoryChip]} 
-                  onPress={() => setSelectedRegion(null)}
-                >
-                  <Text style={[styles.categoryChipText, !selectedRegion && styles.activeCategoryChipText]}>All Regions</Text>
-                </TouchableOpacity>
-                {REGION_TYPES.filter(r => r.id !== 'all').map((reg) => (
-                  <TouchableOpacity 
-                    key={reg.id} 
-                    style={[styles.categoryChip, selectedRegion === reg.id && styles.activeCategoryChip]} 
-                    onPress={() => setSelectedRegion(reg.id)}
-                  >
-                    <Text style={[styles.categoryChipText, selectedRegion === reg.id && styles.activeCategoryChipText]}>{reg.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={{ flexGrow: 0 }}
+              contentContainerStyle={styles.dropdownRowContainer}
+            >
+
+              <View style={styles.dropdownRowContainer}>
+                <FilterDropdown
+                  label="Region"
+                  options={REGION_TYPES}
+                  selectedValue={selectedRegion}
+                  onSelect={setSelectedRegion}
+                  isDefault={selectedRegion === null}
+                />
+
+                <FilterDropdown
+                  label="Destination Type"
+                  options={DESTINATION_TYPES}
+                  selectedValue={selectedType}
+                  onSelect={setSelectedType}
+                  isDefault={selectedType === null}
+                />
+
+                <FilterDropdown
+                  label="Budget"
+                  options={BUDGET_PRESETS}
+                  selectedValue={maxPrice}
+                  onSelect={setMaxPrice}
+                  isDefault={maxPrice === 2000000}
+                />
+
+                <FilterDropdown
+                  label="Sort By"
+                  options={SORT_OPTIONS}
+                  selectedValue={sortBy}
+                  onSelect={setSortBy}
+                  isDefault={sortBy === null}
+                />
+              
             </View>
 
-            <View style={styles.filterSectionWrapper}>
-              <Text style={styles.inlineSectionLabel}>Destination Type</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScrollContainer}>
-                <TouchableOpacity style={[styles.categoryChip, !selectedType && styles.activeCategoryChip]} onPress={() => setSelectedType(null)}>
-                  <Text style={[styles.categoryChipText, !selectedType && styles.activeCategoryChipText]}>All Tours</Text>
-                </TouchableOpacity>
-                {DESTINATION_TYPES.map((cat) => (
-                  <TouchableOpacity key={cat.id} style={[styles.categoryChip, selectedType === cat.id && styles.activeCategoryChip]} onPress={() => setSelectedType(cat.id)}>
-                    <Text style={[styles.categoryChipText, selectedType === cat.id && styles.activeCategoryChipText]}>{cat.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
+          </ScrollView>
 
-            <View style={styles.filterSectionWrapper}>
-              <Text style={styles.inlineSectionLabel}>Budget (INR/Person)</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsScrollContainer}>
-                {BUDGET_PRESETS.map((preset) => (
-                  <TouchableOpacity key={preset.value} style={[styles.presetChip, maxPrice === preset.value && styles.activePresetChip]} onPress={() => setMaxPrice(preset.value)}>
-                    <Text style={[styles.presetChipText, maxPrice === preset.value && styles.activePresetChipText]}>{preset.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </View>
-
-            <View style={styles.filterSectionWrapper}>
-              <Text style={styles.inlineSectionLabel}>Max Duration</Text>
-              <View 
-                style={styles.sliderInteractiveWrapper}
+            <View style={styles.durationRowContainer}>
+              <Text style={styles.inlineDurationLabel}>Max Duration</Text>
+              <View
+                style={styles.sliderInlineWrapper}
                 onLayout={(e) => setSliderWidth(e.nativeEvent.layout.width)}
               >
                 <View style={[styles.floatingBubbleContainer, { left: getBubbleLeftPosition() }]}>
@@ -348,6 +470,8 @@ export default function ExploreScreen() {
                 </View>
               </View>
             </View>
+
+            
           </Animated.View>
         </View>
 
@@ -391,7 +515,7 @@ const styles = StyleSheet.create({
   heroHeading: { fontSize: 24, fontFamily: typography.bold, color: colors.text },
   searchRowContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
   filterSectionWrapper: { marginTop: spacing.xs, marginBottom: 2 },
-  inlineSectionLabel: { fontSize: 12, fontFamily: typography.bold, color: colors.gray || '#666', marginBottom: 4 },
+  //inlineSectionLabel: { fontSize: 12, fontFamily: typography.bold, color: colors.gray || '#666', marginBottom: 4 },
   chipsScrollContainer: { paddingVertical: 4, alignItems: 'center' },
   categoryChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, backgroundColor: '#f0f0f0', marginRight: 8 },
   activeCategoryChip: { backgroundColor: colors.primary },
@@ -401,7 +525,7 @@ const styles = StyleSheet.create({
   activePresetChip: { backgroundColor: colors.primary, borderColor: colors.primary },
   presetChipText: { fontSize: 13, color: colors.text },
   activePresetChipText: { color: '#fff', fontFamily: typography.bold },
-  sliderInteractiveWrapper: { marginTop: 24, paddingHorizontal: 2, position: 'relative' },
+  //sliderInteractiveWrapper: { marginTop: 24, paddingHorizontal: 2, position: 'relative' },
   floatingBubbleContainer: {position: 'absolute',top: -24,width: 45,backgroundColor: colors.primary,borderRadius: 6,paddingVertical: 2,alignItems: 'center',justifyContent: 'center'},
   floatingBubbleText: {fontSize: 11,fontFamily: typography.bold,color: '#fff'},
   sliderElement: { width: '100%', height: 30, ...Platform.select({ web: { cursor: 'pointer' } }) },
@@ -412,5 +536,114 @@ const styles = StyleSheet.create({
   singleCardWrapper: { paddingHorizontal: spacing.xs, width: '100%' },
   gridCardWrapper: { padding: spacing.xs, flex: 1 }, // Flex allocation creates neat multi-column layouts
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
-  emptyText: { fontSize: 14, color: colors.gray, fontFamily: typography.regular }
+  emptyText: { fontSize: 14, color: colors.gray, fontFamily: typography.regular },
+  dropdownRowContainer: {
+    flexDirection: 'row',
+    flexWrap: 'nowrap',
+    flexGrow: 0,
+    alignItems: 'center',
+    paddingVertical: 4,
+    gap: 12,
+  },
+  dropdownTrigger: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 0,
+    alignSelf: 'flex-start',
+    backgroundColor: '#f5f5f5',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    gap: 6,
+  },
+  activeDropdownTrigger: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  dropdownTriggerText: {
+    fontSize: 13,
+    fontFamily: typography.medium,
+    color: colors.text,
+  },
+  activeDropdownTriggerText: {
+    color: '#fff',
+    fontFamily: typography.bold,
+  },
+  dropdownChevron: {
+    fontSize: 12,
+    color: colors.gray || '#666',
+  },
+  modalOptionsList: {
+    width: '100%',
+  },
+  modalOptionItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 11,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+  modalOptionItemSelected: {
+    backgroundColor: '#f0f7ff',
+  },
+  modalOptionText: {
+    fontSize: 14,
+    fontFamily: typography.regular,
+    color: colors.text,
+  },
+  modalOptionTextSelected: {
+    fontFamily: typography.bold,
+    color: colors.primary,
+  },
+  checkmark: {
+    fontSize: 14,
+    fontFamily: typography.bold,
+    color: colors.primary,
+  },
+
+    anchoredBackdrop: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  anchoredMenuCard: {
+    position: 'absolute',
+    maxHeight: 240,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e5e5e5',
+    paddingVertical: 6,
+    paddingHorizontal: 6,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.14,
+        shadowRadius: 12,
+      },
+      android: { elevation: 8 },
+      web: { boxShadow: '0px 6px 18px rgba(0,0,0,0.14)' },
+    }),
+  },
+    durationRowContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.xs,
+    paddingTop: 18, // Leaves headroom above the slider for the floating bubble
+    gap: 12,
+  },
+  inlineDurationLabel: {
+    fontSize: 12,
+    fontFamily: typography.bold,
+    color: colors.gray || '#666',
+    marginBottom: 12, // Vertically centers the text with the slider track rather than the axis labels
+  },
+  sliderInlineWrapper: {
+    flex: 1,
+    position: 'relative',
+  },
+
 });

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet, ScrollView, TouchableOpacity, Dimensions, ActivityIndicator, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Star, MapPin, ArrowLeft } from 'phosphor-react-native';
+import { Star, MapPin, ArrowLeft, Clock } from 'phosphor-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../../constants/colors';
 import { fetchArticleContent, StrapiRichTextContentNode, fetchArticles } from '../../mock/data'; // Adjust this path to match your data.ts location
@@ -210,6 +210,11 @@ export default function BookingDetailsScreen({ route, navigation }: BookingDetai
         <View style={styles.yellowStickerBadge}>
           <Text style={styles.stickerText}>
             {service.price} <Text style={styles.stickerLabelText}>Onwards</Text>
+            {service.duration !== undefined && service.duration > 0 && (
+              <Text style={styles.stickerLabelText}>
+                {' • '}{service.duration} {service.duration === 1 ? 'Day' : 'Days'}
+              </Text>
+            )}
           </Text>
         </View>
       </View>
@@ -247,6 +252,16 @@ export default function BookingDetailsScreen({ route, navigation }: BookingDetai
             <MapPin size={16} color={colors.gray} weight="bold" />
             <Text style={styles.location}>{service.location}</Text>
           </View>
+
+          {service.duration !== undefined && service.duration > 0 && (
+            <View style={styles.durationRow}>
+              <Clock size={16} color={colors.primary || colors.gray} weight="bold" />
+              <Text style={styles.durationText}>
+                Duration: {service.duration} {service.duration === 1 ? 'Day' : 'Days'}
+              </Text>
+            </View>
+          )}
+
         </View>
 
         {/* Description/Content Section */}
@@ -347,6 +362,8 @@ const styles = StyleSheet.create({
   title: { fontSize: 24, fontWeight: 'bold', color: colors.dark, marginBottom: 8 },
   locationRow: { flexDirection: 'row', alignItems: 'center' },
   location: { fontSize: 14, color: colors.gray, marginLeft: 4 },
+  durationRow: { flexDirection: 'row', alignItems: 'center', marginTop: 6 },
+  durationText: { fontSize: 14, fontWeight: '600', color: colors.dark, marginLeft: 6 },
   descriptionSection: { paddingHorizontal: 16, marginTop: 8 },
   nativeH3: { fontSize: 20, fontWeight: 'bold', marginVertical: 12, color: colors.dark },
   nativeParagraph: { fontSize: 16, lineHeight: 24, color: colors.dark, marginBottom: 12 },

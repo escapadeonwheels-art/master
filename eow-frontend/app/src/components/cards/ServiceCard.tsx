@@ -22,7 +22,12 @@ export default function ServiceCard({ service, onPress }: ServiceCardProps) {
           {/* 2. Added the absolute yellow sticker overlay layout component on top right of the image asset */}
           <View style={styles.yellowSticker}>
             <Text style={styles.stickerText} numberOfLines={1}>
-              {service.price} <Text style={styles.stickerLabel}></Text>
+              {service.price}
+              {service.duration !== undefined && service.duration > 0 && (
+                <Text style={styles.stickerLabel}>
+                  {' • '}{service.duration} {service.duration === 1 ? 'Day' : 'Days'}
+                </Text>
+              )}
             </Text>
           </View>
         </View>

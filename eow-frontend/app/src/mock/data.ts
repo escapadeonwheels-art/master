@@ -31,6 +31,7 @@ interface FetchArticlesParams {
   duration?: number;
   slug?: string; // 🎯 Added explicit slug parameter filtering mapping contract
   limit?: number; // 🎯 Added optional limit property to dynamically override global constants
+  sortBy?: string | null;
 }
 
 /**
@@ -44,7 +45,8 @@ export const fetchArticles = async ({
   region = null,
   duration = 30,
   slug = '',
-  limit // 🎯 Accept the dynamic override mapping parameter hook
+  limit,
+  sortBy = null
 }: FetchArticlesParams = {}): Promise<Service[]> => {
   try {
     const loadedServices: Service[] = [];
@@ -79,6 +81,10 @@ export const fetchArticles = async ({
 
     if (region) {
       url += `&filters[type][$eq]=${region}`; 
+    }
+
+    if (sortBy) {
+      url += `&sort[0]=${sortBy}`;
     }
     
     const response = await fetch(url);
@@ -129,6 +135,7 @@ export const fetchArticles = async ({
         host: 'x',
         description: item.description,
         featured: item.featured,
+        duration: item.duration !== undefined && item.duration !== null ? Number(item.duration) : undefined,
         content: [], 
       });
     }
@@ -206,4 +213,5 @@ export interface Service {
   description: string;
   content: StrapiRichTextContentNode[];
   featured?: boolean;
+  duration?: number;
 }
