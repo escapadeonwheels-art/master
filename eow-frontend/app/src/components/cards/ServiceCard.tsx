@@ -43,12 +43,13 @@ export default function ServiceCard({ service, onPress }: ServiceCardProps) {
             {service.reviews > 0 && (
               <View style={styles.rating}>
                 <StarIcon size={16} weight="fill" color={colors.primary} />
-                <Text style={styles.ratingText}>{service.rating}</Text>
-                <Text style={styles.reviews}>({service.reviews})</Text>
+                {/* <Text style={styles.ratingText}>{service.rating}</Text> */}
+                {/* <Text style={styles.reviews}>({service.reviews})</Text> */}
               </View>
             )}
             {/* 3. Extracted the old right-aligned price layout group blocks from the footer segment */}
           </View>
+
         </View>
       </Card>
     </TouchableOpacity>

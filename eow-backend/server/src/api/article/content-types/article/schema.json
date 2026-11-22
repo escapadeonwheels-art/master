@@ -44,18 +44,6 @@
     "price": {
       "type": "string"
     },
-    "rating": {
-      "type": "string"
-    },
-    "reviews": {
-      "type": "text"
-    },
-    "host": {
-      "type": "string"
-    },
-    "description": {
-      "type": "string"
-    },
     "featured": {
       "type": "string"
     },
@@ -63,6 +51,9 @@
       "type": "integer"
     },
     "duration": {
+      "type": "integer"
+    },
+    "discount_percentage": {
       "type": "integer"
     }
   }

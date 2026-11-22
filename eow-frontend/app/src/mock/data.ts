@@ -11,9 +11,9 @@ const requestedFields = [
   'location',
   'price',
   'price_number',
-  'rating',
-  'reviews',
-  'description',
+  //'rating',
+  //'reviews',
+  //'description',
   'featured',
   'duration'
 ];
@@ -134,7 +134,7 @@ export const fetchArticles = async ({
         reviews: Number(item.reviews) || 0,
         image: imageUrl, 
         host: 'x',
-        description: item.description,
+        description: item.description || '',
         featured: item.featured,
         duration: item.duration !== undefined && item.duration !== null ? Number(item.duration) : undefined,
         content: [], 

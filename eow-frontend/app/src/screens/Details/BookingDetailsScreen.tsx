@@ -50,7 +50,7 @@ export default function BookingDetailsScreen({ route, navigation }: BookingDetai
     reviews: 0,
     image: '',
     host: 'Default',
-    description: 'Default',
+    //description: 'Default',
     type: 'travel',
     content: [],
   });

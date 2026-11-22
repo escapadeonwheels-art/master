@@ -445,10 +445,9 @@ export interface ApiArticleArticle extends Struct.CollectionTypeSchema {
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
-    description: Schema.Attribute.String;
+    discount_percentage: Schema.Attribute.Integer;
     duration: Schema.Attribute.Integer;
     featured: Schema.Attribute.String;
-    host: Schema.Attribute.String;
     image: Schema.Attribute.Media<
       'images' | 'files' | 'videos' | 'audios',
       true
@@ -463,8 +462,6 @@ export interface ApiArticleArticle extends Struct.CollectionTypeSchema {
     price: Schema.Attribute.String;
     price_number: Schema.Attribute.Integer;
     publishedAt: Schema.Attribute.DateTime;
-    rating: Schema.Attribute.String;
-    reviews: Schema.Attribute.Text;
     slug: Schema.Attribute.UID;
     subtype: Schema.Attribute.String;
     title: Schema.Attribute.String &
