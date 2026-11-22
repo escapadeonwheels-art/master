@@ -174,7 +174,8 @@ const REGION_TYPES: DropdownOption<string | null>[] = [
   { value: 'domestic', label: 'Domestic' },
 ];
 
-const SORT_OPTIONS: DropdownOption<string>[] = [
+const SORT_OPTIONS: DropdownOption<string | null>[] = [
+  { value: null, label: 'Default' },
   { value: 'featured:desc', label: 'Offers' },
   { value: 'price_number:asc', label: 'Price' },
   { value: 'duration:asc', label: 'Duration' },
@@ -403,20 +404,13 @@ export default function ExploreScreen() {
             >
 
               <View style={styles.dropdownRowContainer}>
-                <FilterDropdown
-                  label="Region"
-                  options={REGION_TYPES}
-                  selectedValue={selectedRegion}
-                  onSelect={setSelectedRegion}
-                  isDefault={selectedRegion === null}
-                />
 
                 <FilterDropdown
-                  label="Destination Type"
-                  options={DESTINATION_TYPES}
-                  selectedValue={selectedType}
-                  onSelect={setSelectedType}
-                  isDefault={selectedType === null}
+                  label="Sort By"
+                  options={SORT_OPTIONS}
+                  selectedValue={sortBy}
+                  onSelect={setSortBy}
+                  isDefault={sortBy === null}
                 />
 
                 <FilterDropdown
@@ -428,13 +422,21 @@ export default function ExploreScreen() {
                 />
 
                 <FilterDropdown
-                  label="Sort By"
-                  options={SORT_OPTIONS}
-                  selectedValue={sortBy}
-                  onSelect={setSortBy}
-                  isDefault={sortBy === null}
+                  label="Region"
+                  options={REGION_TYPES}
+                  selectedValue={selectedRegion}
+                  onSelect={setSelectedRegion}
+                  isDefault={selectedRegion === null}
                 />
-              
+
+                <FilterDropdown
+                  label="Destination"
+                  options={DESTINATION_TYPES}
+                  selectedValue={selectedType}
+                  onSelect={setSelectedType}
+                  isDefault={selectedType === null}
+                />
+
             </View>
 
           </ScrollView>
@@ -515,7 +517,6 @@ const styles = StyleSheet.create({
   heroHeading: { fontSize: 24, fontFamily: typography.bold, color: colors.text },
   searchRowContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm },
   filterSectionWrapper: { marginTop: spacing.xs, marginBottom: 2 },
-  //inlineSectionLabel: { fontSize: 12, fontFamily: typography.bold, color: colors.gray || '#666', marginBottom: 4 },
   chipsScrollContainer: { paddingVertical: 4, alignItems: 'center' },
   categoryChip: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, backgroundColor: '#f0f0f0', marginRight: 8 },
   activeCategoryChip: { backgroundColor: colors.primary },
@@ -525,7 +526,6 @@ const styles = StyleSheet.create({
   activePresetChip: { backgroundColor: colors.primary, borderColor: colors.primary },
   presetChipText: { fontSize: 13, color: colors.text },
   activePresetChipText: { color: '#fff', fontFamily: typography.bold },
-  //sliderInteractiveWrapper: { marginTop: 24, paddingHorizontal: 2, position: 'relative' },
   floatingBubbleContainer: {position: 'absolute',top: -24,width: 45,backgroundColor: colors.primary,borderRadius: 6,paddingVertical: 2,alignItems: 'center',justifyContent: 'center'},
   floatingBubbleText: {fontSize: 11,fontFamily: typography.bold,color: '#fff'},
   sliderElement: { width: '100%', height: 30, ...Platform.select({ web: { cursor: 'pointer' } }) },
@@ -537,86 +537,23 @@ const styles = StyleSheet.create({
   gridCardWrapper: { padding: spacing.xs, flex: 1 }, // Flex allocation creates neat multi-column layouts
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   emptyText: { fontSize: 14, color: colors.gray, fontFamily: typography.regular },
-  dropdownRowContainer: {
-    flexDirection: 'row',
-    flexWrap: 'nowrap',
-    flexGrow: 0,
-    alignItems: 'center',
-    paddingVertical: 4,
-    gap: 12,
-  },
-  dropdownTrigger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexShrink: 0,
-    alignSelf: 'flex-start',
-    backgroundColor: '#f5f5f5',
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    gap: 6,
-  },
-  activeDropdownTrigger: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  dropdownTriggerText: {
-    fontSize: 13,
-    fontFamily: typography.medium,
-    color: colors.text,
-  },
-  activeDropdownTriggerText: {
-    color: '#fff',
-    fontFamily: typography.bold,
-  },
-  dropdownChevron: {
-    fontSize: 12,
-    color: colors.gray || '#666',
-  },
-  modalOptionsList: {
-    width: '100%',
-  },
-  modalOptionItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 11,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-  },
-  modalOptionItemSelected: {
-    backgroundColor: '#f0f7ff',
-  },
-  modalOptionText: {
-    fontSize: 14,
-    fontFamily: typography.regular,
-    color: colors.text,
-  },
-  modalOptionTextSelected: {
-    fontFamily: typography.bold,
-    color: colors.primary,
-  },
-  checkmark: {
-    fontSize: 14,
-    fontFamily: typography.bold,
-    color: colors.primary,
-  },
-
-    anchoredBackdrop: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  anchoredMenuCard: {
-    position: 'absolute',
-    maxHeight: 240,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#e5e5e5',
-    paddingVertical: 6,
-    paddingHorizontal: 6,
+  dropdownRowContainer: {flexDirection: 'row',flexWrap: 'nowrap',flexGrow: 0, alignItems: 'center', paddingVertical: 4, gap: 12, },
+  dropdownTrigger: { flexDirection: 'row', alignItems: 'center', flexShrink: 0, alignSelf: 'flex-start', backgroundColor: '#f5f5f5', borderWidth: 1, borderColor: '#e0e0e0', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 7, gap: 6, },
+  activeDropdownTrigger: { backgroundColor: colors.primary, borderColor: colors.primary, },
+  dropdownTriggerText: { fontSize: 13, fontFamily: typography.medium, color: colors.text, },
+  activeDropdownTriggerText: { color: '#fff', fontFamily: typography.bold, },
+  dropdownChevron: { fontSize: 12, color: colors.gray || '#666', },
+  modalOptionsList: { width: '100%', },
+  modalOptionItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 11, paddingHorizontal: 8, borderRadius: 8, },
+  modalOptionItemSelected: { backgroundColor: '#f0f7ff', },
+  modalOptionText: { fontSize: 14, fontFamily: typography.regular, color: colors.text, },
+  modalOptionTextSelected: { fontFamily: typography.bold, color: colors.primary,},
+  checkmark: {fontSize: 14,fontFamily: typography.bold,color: colors.primary,},
+  anchoredBackdrop: {flex: 1,backgroundColor: 'transparent',},
+  durationRowContainer: {flexDirection: 'row',alignItems: 'center',marginTop: spacing.xs,paddingTop: 18,gap: 12,},
+  inlineDurationLabel: {fontSize: 12,fontFamily: typography.bold, color: colors.gray || '#666',marginBottom: 12,},
+  sliderInlineWrapper: {flex: 1,position: 'relative',},
+  anchoredMenuCard: {position: 'absolute',maxHeight: 240,backgroundColor: '#fff',borderRadius: 12,borderWidth: 1,borderColor: '#e5e5e5',paddingVertical: 6,paddingHorizontal: 6,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -628,22 +565,4 @@ const styles = StyleSheet.create({
       web: { boxShadow: '0px 6px 18px rgba(0,0,0,0.14)' },
     }),
   },
-    durationRowContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.xs,
-    paddingTop: 18, // Leaves headroom above the slider for the floating bubble
-    gap: 12,
-  },
-  inlineDurationLabel: {
-    fontSize: 12,
-    fontFamily: typography.bold,
-    color: colors.gray || '#666',
-    marginBottom: 12, // Vertically centers the text with the slider track rather than the axis labels
-  },
-  sliderInlineWrapper: {
-    flex: 1,
-    position: 'relative',
-  },
-
 });

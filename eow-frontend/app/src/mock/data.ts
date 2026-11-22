@@ -56,7 +56,6 @@ export const fetchArticles = async ({
     
     let url = `${STRAPI_URL}/api/articles?pagination[page]=${page}&pagination[pageSize]=${activePageSize}&${fieldsQueryString}&populate[image][fields][0]=url`;
     
-    // 🎯 FIX: Explicit query parameter routing block for accurate slug lookups
     if (slug.trim() !== '') {
       url += `&filters[slug][$eq]=${encodeURIComponent(slug.trim())}`;
     }
@@ -83,7 +82,9 @@ export const fetchArticles = async ({
       url += `&filters[type][$eq]=${region}`; 
     }
 
-    if (sortBy) {
+    if (sortBy === 'featured:desc') {
+      url += `&filters[featured][$eq]=true&sort[0]=createdAt:desc`;
+    } else if (sortBy) {
       url += `&sort[0]=${sortBy}`;
     }
     
@@ -114,9 +115,9 @@ export const fetchArticles = async ({
       
       console.log(`[CHECKPOINT 1 - DATA LAYER] 
         👉 Title: "${item.title}"
-        👉 Raw Strapi item.slug: "${item.slug}"
-        👉 Final Resolved Slug: "${verifiedSlug}"
+        👉 Slug: "${verifiedSlug}"
         👉 Document ID: "${item.documentId || item.id}"
+        👉 Featured: "${item.featured}"
       `);
       loadedServices.push({
         id: String(item.documentId || item.id),
@@ -212,6 +213,6 @@ export interface Service {
   host: string;
   description: string;
   content: StrapiRichTextContentNode[];
-  featured?: boolean;
+  featured?: string;
   duration?: number;
 }
